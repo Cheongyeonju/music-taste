@@ -48,28 +48,117 @@ export interface RecipeResult {
   tags: string[];
 }
 
-// 총 16가지 조합 (S/B * C/D * O/P * F/H)
+// [Updated] English Descriptions & Food Concepts
 export const RECIPES: Record<string, RecipeResult> = {
-  // S (Melody) Base
-  'SCOF': { name: 'Sunday Brunch Acoustic', description: 'Like a brunch in warm sunlight, this is a cozy acoustic pop track that everyone enjoys.', emoji: '🥞', tags: ['Acoustic Pop', 'Spring'] },
-  'SCOH': { name: 'Secret Garden Folk', description: 'Like a fresh salad in a hidden forest, this is a healing indie-folk gem found only by you.', emoji: '🥗', tags: ['Indie Folk', 'Healing'] },
-  'SCPF': { name: 'Trending Lo-fi Beats', description: 'Like a trendy latte in a cafe, these soft electronic lo-fi beats are perfect for chilling.', emoji: '🎧', tags: ['Lo-fi', 'Chill Pop'] },
-  'SCPH': { name: 'Dreamy Bedroom Pop', description: 'Like fluffy cotton candy, this features dreamy synthesizer sounds floating on clouds.', emoji: '☁️', tags: ['Bedroom Pop', 'Dreamy'] },
-  'SDOF': { name: 'Festival Rock Anthem', description: 'Like a cold soda, this refreshing band sound gives you an explosive burst of energy.', emoji: '🎸', tags: ['Pop Rock', 'Festival'] },
-  'SDOH': { name: 'Garage Band Discovery', description: 'Like a rough street taco, this track is full of raw, unpolished energy and spirit.', emoji: '🥁', tags: ['Garage Rock', 'Indie'] },
-  'SDPF': { name: 'K-Pop / Dance Hit', description: 'Like popping candy, this track is flashy, energetic, and makes you want to dance.', emoji: '🍭', tags: ['K-Pop', 'Dance'] },
-  'SDPH': { name: 'Hyperpop Glitch', description: 'Like an intense energy drink, this features unpredictable and thrilling electronic sounds.', emoji: '🍬', tags: ['Hyperpop', 'Glitch'] },
+  // ------------------------------------------------------------------
+  // Group S (Melody Focus)
+  // ------------------------------------------------------------------
+  'SCOF': { 
+    name: 'Fluffy Souffle Pancake', 
+    description: 'Just like a soft souffle pancake that melts in your mouth, you prefer warm, cozy acoustic pop. A comfortable melody that everyone loves is your favorite flavor.', 
+    emoji: '🥞', 
+    tags: ['Acoustic Pop', 'Warm', 'Soft', 'Brunch Vibe'] 
+  },
+  'SCOH': { 
+    name: 'Homemade Greek Yogurt', 
+    description: 'Like thick, organic Greek yogurt, you enjoy the raw and healthy taste of nature. You prefer discovering hidden indie folk gems over processed commercial hits.', 
+    emoji: '🥣', 
+    tags: ['Indie Folk', 'Organic', 'Pure', 'Healing'] 
+  },
+  'SCPF': { 
+    name: 'Strawberry Cream Latte', 
+    description: 'Like a sweet and trendy strawberry latte, you love soft but polished electronic sounds. Lo-fi beats and chill pop with a cute vibe are your perfect match.', 
+    emoji: '🍓', 
+    tags: ['Lo-fi', 'Chill Pop', 'Trendy', 'Sweet'] 
+  },
+  'SCPH': { 
+    name: 'Cotton Candy Cloud', 
+    description: 'Like cotton candy floating in the sky, you crave dreamy synthesizer sounds. You enjoy getting lost in a magical, pastel-colored musical atmosphere.', 
+    emoji: '☁️', 
+    tags: ['Dream Pop', 'Synth', 'Fluffy', 'Magical'] 
+  },
+  'SDOF': { 
+    name: 'Crispy Fried Chicken', 
+    description: 'Like crispy chicken with a cold beer, you need refreshing and explosive energy! Powerful pop-rock band sounds are your stress reliever.', 
+    emoji: '🍗', 
+    tags: ['Pop Rock', 'Energy', 'Cool', 'Festival'] 
+  },
+  'SDOH': { 
+    name: 'Spicy Street Taco', 
+    description: 'Like a rough but addictive street taco, you love raw, unpolished garage rock energy. You prefer the wild, spicy kick of the underground scene.', 
+    emoji: '🌮', 
+    tags: ['Garage Rock', 'Raw', 'Wild', 'Spicy'] 
+  },
+  'SDPF': { 
+    name: 'Popping Candy Ice Cream', 
+    description: 'Like popping candy in your mouth, you seek flashy and stimulating K-Pop dance tracks. You enjoy colorful, energetic, and catchy flavors.', 
+    emoji: '🍦', 
+    tags: ['K-Pop', 'Dance', 'Flashy', 'Exciting'] 
+  },
+  'SDPH': { 
+    name: 'High-Caffeine Energy Drink', 
+    description: 'Like a strong energy drink, you want a heart-pounding digital rush. You are addicted to the unpredictable and futuristic taste of Hyperpop.', 
+    emoji: '⚡', 
+    tags: ['Hyperpop', 'Glitch', 'Future', 'Intense'] 
+  },
 
-  // B (Story) Base
-  'BCOF': { name: 'Classic Ballad', description: 'Like rich espresso, this bittersweet emotional ballad leaves a deep lingering feeling.', emoji: '☕', tags: ['Ballad', 'Piano'] },
-  'BCOH': { name: 'Late Night Indie', description: 'Like warm tea at dawn, this calm and quiet indie track brings you comfort.', emoji: '🌙', tags: ['Indie', 'Dawn'] },
-  'BCPF': { name: 'City Pop / R&B', description: 'Like a sophisticated city cocktail, this is a groovy and stylish R&B track.', emoji: '🍸', tags: ['R&B', 'City Pop'] },
-  'BCPH': { name: 'Underground Ambient', description: 'Like deep ocean flavors, this ambient music makes you focus on the sound itself.', emoji: '🌌', tags: ['Ambient', 'Chillwave'] },
-  'BDOF': { name: 'Emotional Rock', description: 'Like spicy mala soup, this Emo Rock track pours out deep sorrow and anger.', emoji: '🥀', tags: ['Emo Rock', 'Alternative'] },
-  'BDOH': { name: 'Dark Jazz / Blues', description: 'Like aged whiskey, this track feels rough, deep, and full of life stories.', emoji: '🎷', tags: ['Jazz', 'Blues'] },
-  'BDPF': { name: 'Dark Hip-Hop', description: 'Like heavy dark chocolate, this track features weighty beats and serious lyrics.', emoji: '🎤', tags: ['Hip-Hop', 'Rap'] },
-  'BDPH': { name: 'Industrial Techno', description: 'Like the taste of cold metal, this intense techno track paints a dystopian world.', emoji: '🏗️', tags: ['Techno', 'Industrial'] },
+  // ------------------------------------------------------------------
+  // Group B (Story Focus)
+  // ------------------------------------------------------------------
+  'BCOF': { 
+    name: 'Warm Americano', 
+    description: 'Like a classic Americano, you appreciate the deep, bittersweet taste of life. Emotional ballads with meaningful lyrics are your soul food.', 
+    emoji: '☕', 
+    tags: ['Ballad', 'Classic', 'Deep', 'Emotional'] 
+  },
+  'BCOH': { 
+    name: 'Earl Grey Tea', 
+    description: 'Like a fragrant cup of Earl Grey at dawn, you prefer calm and quiet indie music. You enjoy savoring the lyrics alone in a peaceful atmosphere.', 
+    emoji: '🫖', 
+    tags: ['Indie', 'Calm', 'Scented', 'Relaxing'] 
+  },
+  'BCPF': { 
+    name: 'Vintage Red Wine', 
+    description: 'Like aged red wine, you have a sophisticated taste for groovy R&B. You enjoy the stylish, intoxicating vibe of the city night.', 
+    emoji: '🍷', 
+    tags: ['R&B', 'Soul', 'City Pop', 'Classy'] 
+  },
+  'BCPH': { 
+    name: 'Dark Chocolate (99%)', 
+    description: 'Like bitter dark chocolate, you focus on the deep essence of sound. You prefer minimal ambient music that sinks into the abyss.', 
+    emoji: '🍫', 
+    tags: ['Ambient', 'Deep', 'Dark', 'Focus'] 
+  },
+  'BDOF': { 
+    name: 'Spicy Mala Soup', 
+    description: 'Like tongue-numbing Mala soup, you want to explode your emotions with Emo Rock. You release sadness and anger through spicy, intense sounds.', 
+    emoji: '🥘', 
+    tags: ['Emo Rock', 'Explosive', 'Hot', 'Crying'] 
+  },
+  'BDOH': { 
+    name: 'Smoky Aged Whisky', 
+    description: 'Like strong whisky, you enjoy the rough, mature taste of Blues and Jazz. You appreciate the heavy, deep stories of life in the music.', 
+    emoji: '🥃', 
+    tags: ['Jazz', 'Blues', 'Vintage', 'Mature'] 
+  },
+  'BDPF': { 
+    name: 'Double Shot Espresso', 
+    description: 'Like a punchy double shot, you need heavy beats and serious rap. You prefer the bold, dark, and strong flavor of Hip-hop.', 
+    emoji: '🎤', 
+    tags: ['Hip-Hop', 'Dark', 'Bold', 'Punchy'] 
+  },
+  'BDPH': { 
+    name: 'Ice Cold Vodka', 
+    description: 'Like cold vodka, you enjoy the mechanical and detached vibe of Techno. You are drawn to the cool, dystopian taste of industrial sounds.', 
+    emoji: '🧊', 
+    tags: ['Techno', 'Cold', 'Industrial', 'Club'] 
+  },
 
   // Default
-  'default': { name: 'Classic Vanilla Latte', description: 'A smooth and sweet pop track that is universally appealing.', emoji: '☕', tags: ['Pop', 'R&B'] }
+  'default': { 
+    name: 'Classic Vanilla Ice Cream', 
+    description: 'A smooth and sweet pop track that is universally appealing to everyone.', 
+    emoji: '🍨', 
+    tags: ['Pop', 'Sweet', 'Universal', 'Classic'] 
+  }
 };
