@@ -1,4 +1,4 @@
-import MusicOmakase from '@/components/MusicOmakase';
+import MusicOmakase from '@/components/Music Taste';
 
 export default function Home() {
   return (
