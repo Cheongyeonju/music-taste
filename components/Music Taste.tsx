@@ -396,10 +396,12 @@ const MusicTaste = () => {
         </div>
       )}
 
+      {/* 질문 진행 단계 (Step 1~4) */}
       {step >= 1 && step <= 4 && (
         <div className="w-full max-w-lg space-y-4 animate-slide-up relative">
-            {/* ... Questions 내용 ... */}
-             <div className="flex items-center justify-between mb-2">
+          
+          {/* 상단 네비게이션 (뒤로가기, 단계 표시) */}
+          <div className="flex items-center justify-between mb-2">
             <button onClick={handleBack} className="text-gray-500 hover:text-white text-sm font-bold flex items-center gap-1 transition">
               {t.back}
             </button>
@@ -408,11 +410,20 @@ const MusicTaste = () => {
             </span>
           </div>
 
+          {/* 진행바 */}
           <div className="h-1.5 w-full bg-gray-800 rounded-full mb-8 overflow-hidden">
              <div className="h-full bg-neon-gradient transition-all duration-500 ease-out" style={{ width: `${progress}%` }}></div>
           </div>
 
-          <div className="bg-[#121212] border border-gray-800 p-6 rounded-2xl shadow-xl relative overflow-hidden">
+          {/* [핵심 수정] key={step} 추가 
+              이 속성을 추가하면 단계(step)가 바뀔 때마다 
+              리액트가 이 div를 완전히 새로 그려서(Re-render),
+              이전 버튼에 남아있던 포커스(눌림 상태)를 강제로 없앱니다. 
+          */}
+          <div 
+            key={step} 
+            className="bg-[#121212] border border-gray-800 p-6 rounded-2xl shadow-xl relative overflow-hidden animate-fade-in"
+          >
              <h2 className="text-xs text-gray-500 font-bold tracking-widest uppercase mb-2">
                {currentQuestions[step-1].category}
              </h2>
@@ -425,22 +436,23 @@ const MusicTaste = () => {
                 <button
                   key={idx}
                   onClick={() => handleSelect(opt.value as DishCode)}
-                  className="group p-5 bg-[#1A1A1A] border border-gray-700 rounded-xl text-left hover:border-purple-500 hover:bg-[#202020] transition-all duration-200"
+                  className="group p-5 bg-[#1A1A1A] border border-gray-700 rounded-xl text-left hover:border-purple-500 hover:bg-[#202020] active:scale-95 transition-all duration-200"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-bold group-hover:text-purple-300 break-keep">
-                        {(opt as any).icon && <span className="mr-2">{(opt as any).icon}</span>}
-                        {opt.text}
+                        {/* 텍스트 앞에 이모지가 있다면 분리해서 보여줌 (선택사항) */}
+                        <span className="mr-2">{opt.text.split(' ')[0]}</span> 
+                        {opt.text.substring(opt.text.indexOf(' ') + 1)}
                     </span>
                   </div>
-                  <div className="text-sm text-gray-400 mt-1 break-keep">{opt.subtext}</div>
+                  <div className="text-sm text-gray-400 mt-1 break-keep leading-relaxed">{opt.subtext}</div>
                 </button>
               ))}
             </div>
           </div>
         </div>
       )}
-
+      
       {/* Result (Order Ticket) */}
       {step === 99 && (
         <div className="w-full max-w-sm animate-slide-up pb-10">
