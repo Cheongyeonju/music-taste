@@ -138,7 +138,7 @@ const UI_TEXT = {
   },
   ko: {
     introTitle: <>당신의 음악은 <br/><span className="text-neon-gradient">무슨 맛인가요?</span></>,
-    introDesc: <>내 취향을 분석하고 딱 맞는 플레이리스트를 찾아보세요.<br/>3분이면 나의 '음악 맛'을 알 수 있습니다.</>,
+    introDesc: "당신의 음악 DNA를 분석해 맛있는 코스 요리로 제공해 드립니다.",
     startBtn: "테스트 시작하기",
     step: "단계",
     back: "← 뒤로",
@@ -185,7 +185,6 @@ const MusicTaste = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
-  // [추가] 이미지 저장 모달 상태
   const [savedImageUrl, setSavedImageUrl] = useState<string | null>(null);
 
   const ticketRef = useRef<HTMLDivElement>(null);
@@ -196,7 +195,6 @@ const MusicTaste = () => {
   useEffect(() => {
     if (typeof window !== 'undefined' && window.Kakao) {
       if (!window.Kakao.isInitialized()) {
-        // [중요] YOUR_KAKAO_JS_KEY를 본인의 실제 앱 키로 바꿔주세요
         window.Kakao.init('YOUR_KAKAO_JS_KEY'); 
       }
     }
@@ -247,26 +245,26 @@ const MusicTaste = () => {
   
   const finalResultData = getResultText();
 
-  // [수정] 이미지 생성 후 '다운로드 시도' 대신 '모달 띄우기'로 변경
   const handleDownloadImage = async () => {
     if (!ticketRef.current) return;
     setIsSaving(true);
     try {
-      const wasModalOpen = isShareModalOpen;
-      if(wasModalOpen) setIsShareModalOpen(false);
+      setIsShareModalOpen(false); 
       
-      await new Promise(res => setTimeout(res, 100));
+      await new Promise(res => setTimeout(res, 200));
 
-      const canvas = await html2canvas(ticketRef.current, { backgroundColor: '#ffffff', scale: 2 });
-      const imageUrl = canvas.toDataURL('image/png');
+      const canvas = await html2canvas(ticketRef.current, { 
+        backgroundColor: '#ffffff', 
+        scale: 2,
+        useCORS: true 
+      });
       
-      // 모바일 등에서 저장 실패를 방지하기 위해, 이미지를 팝업으로 띄워줌
+      const imageUrl = canvas.toDataURL('image/png');
       setSavedImageUrl(imageUrl);
       
-      if(wasModalOpen) setIsShareModalOpen(true);
     } catch (err) {
       console.error(err);
-      alert('이미지 생성에 실패했습니다.');
+      alert('이미지 생성 중 오류가 발생했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -322,7 +320,7 @@ const MusicTaste = () => {
       
       <Script src="https://t1.kakaocdn.net/kakao_js_sdk/2.6.0/kakao.min.js" integrity="sha384-6MFdIr0zOira1CHQkedUqJVql0YtcZA1P0nbPrQYJXVJZz0RWLXYy6Stq728HJp2" crossOrigin="anonymous" onLoad={() => {
           if (window.Kakao && !window.Kakao.isInitialized()) {
-             window.Kakao.init('YOUR_KAKAO_JS_KEY'); // [필수] 키 입력
+             window.Kakao.init('YOUR_KAKAO_JS_KEY'); 
           }
       }} />
 
@@ -338,10 +336,11 @@ const MusicTaste = () => {
       {step === 0 && (
         <div className="text-center space-y-6 animate-fade-in max-w-2xl relative">
           
+          {/* [수정] 아이콘 변경: 접시+음표 -> 메뉴판(📋) */}
           <div className="inline-block p-6 rounded-full bg-gray-800 border border-gray-700 mb-6 shadow-2xl relative overflow-visible">
              <div className="relative w-24 h-24 flex items-center justify-center filter drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">
-               <span className="text-[5rem] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-90 select-none">🍽️</span>
-               <span className="text-[1.75rem] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 select-none drop-shadow-lg mt-1">🎵</span>
+               {/* 메뉴판 아이콘 (📋) */}
+               <span className="text-[5rem] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-90 select-none">📋</span>
              </div>
           </div>
 
@@ -518,7 +517,7 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* [추가] 이미지 저장용 팝업 모달 */}
+      {/* 이미지 저장용 팝업 모달 */}
       {savedImageUrl && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSavedImageUrl(null)}>
           <div className="max-w-sm w-full bg-white rounded-xl p-4 flex flex-col items-center space-y-4" onClick={e => e.stopPropagation()}>
