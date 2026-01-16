@@ -281,28 +281,47 @@ const MusicTaste = () => {
     }
   };
 
-  const handleKakaoShare = () => {
-    if (typeof window === 'undefined' || !window.Kakao || !window.Kakao.isInitialized()) {
-      alert('카카오톡 공유 기능을 불러오지 못했습니다.');
-      return;
+  // [신규] 인스타그램 스토리 공유 핸들러 (Web Share API 활용)
+  const handleInstagramShare = async () => {
+    if (!ticketRef.current) return;
+    setIsSaving(true);
+    try {
+      // 1. 이미지를 생성합니다.
+      const canvas = await html2canvas(ticketRef.current, { 
+        backgroundColor: '#ffffff', 
+        scale: 2, 
+        useCORS: true 
+      });
+      
+      // 2. Blob으로 변환
+      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('Blob 생성 실패');
+
+      // 3. 파일 객체 생성
+      const file = new File([blob], 'music_tasty_result.png', { type: 'image/png' });
+
+      // 4. 모바일 공유하기 기능 시도 (Web Share API)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Music Tasty Result',
+          text: '나의 음악 취향 결과입니다! #MusicTasty',
+        });
+      } else {
+        // 5. PC나 지원하지 않는 브라우저일 경우: 다운로드 후 안내
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = 'music_tasty_result.png';
+        link.click();
+        alert('이미지가 저장되었습니다. 인스타그램 스토리에 업로드해주세요!');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('공유하기를 지원하지 않는 환경입니다. 이미지 저장을 이용해주세요.');
+    } finally {
+      setIsSaving(false);
+      setIsShareModalOpen(false);
     }
-
-    const shareUrl = `${window.location.origin}?code=${resultCode}`;
-    const title = lang === 'en' ? "Music Tasty" : "당신의 음악은 무슨 맛인가요?";
-    const desc = `${finalResultData.name} ${emoji}`;
-
-    window.Kakao.Share.sendDefault({
-      objectType: 'feed',
-      content: {
-        title: title,
-        description: desc,
-        imageUrl: `${window.location.origin}/api/og?code=${resultCode}`,
-        link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
-      },
-      buttons: [
-        { title: '결과 확인하기', link: { mobileWebUrl: shareUrl, webUrl: shareUrl } },
-      ],
-    });
   };
 
   const SectionDivider = ({ title }: { title: string }) => (
@@ -336,11 +355,11 @@ const MusicTaste = () => {
       {step === 0 && (
         <div className="text-center space-y-6 animate-fade-in max-w-2xl relative">
           
-          {/* [수정] 아이콘 변경: 접시+음표 -> 메뉴판(📋) */}
-          <div className="inline-block p-6 rounded-full bg-gray-800 border border-gray-700 mb-6 shadow-2xl relative overflow-visible">
-             <div className="relative w-24 h-24 flex items-center justify-center filter drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">
-               {/* 메뉴판 아이콘 (📋) */}
-               <span className="text-[5rem] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-90 select-none">📋</span>
+          {/* 아이콘: '접시+음표' (1/2 사이즈) */}
+          <div className="inline-block p-4 rounded-full bg-gray-800 border border-gray-700 mb-6 shadow-xl relative overflow-visible">
+             <div className="relative w-14 h-14 flex items-center justify-center filter drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
+               <span className="text-[3.5rem] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-90 select-none">🍽️</span>
+               <span className="text-[1.5rem] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 select-none drop-shadow-lg mt-1">🎵</span>
              </div>
           </div>
 
@@ -482,7 +501,7 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 공유 옵션 모달 */}
+      {/* 공유 옵션 모달: 링크 복사 & 인스타그램 스토리 (2가지 옵션) */}
       {isShareModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsShareModalOpen(false)}>
           <div className="w-full max-w-sm bg-white rounded-t-2xl p-6 pb-10 space-y-6 transform transition-transform duration-300 ease-out" onClick={e => e.stopPropagation()}>
@@ -491,26 +510,19 @@ const MusicTaste = () => {
               <button onClick={() => setIsShareModalOpen(false)} className="text-gray-400 hover:text-black p-1">✕</button>
             </div>
             
-            <div className="grid grid-cols-3 gap-4 px-4">
-              <button onClick={handleKakaoShare} className="flex flex-col items-center gap-2 group">
-                <div className="w-14 h-14 bg-[#FEE500] rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                  <span className="text-black font-black text-xl">K</span>
-                </div>
-                <span className="text-xs text-gray-600 font-medium">카카오톡</span>
-              </button>
-
-              <button onClick={handleCopyLink} className="flex flex-col items-center gap-2 group">
+            <div className="grid grid-cols-2 gap-4 px-4">
+              <button onClick={handleCopyLink} className="flex flex-col items-center gap-3 group p-2 rounded-xl hover:bg-gray-50 transition">
                 <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                   <span className="text-2xl">🔗</span>
                 </div>
-                <span className="text-xs text-gray-600 font-medium">링크복사</span>
+                <span className="text-xs text-gray-600 font-bold">링크 복사</span>
               </button>
 
-              <button onClick={handleDownloadImage} className="flex flex-col items-center gap-2 group">
-                <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                  <span className="text-2xl">💾</span>
+              <button onClick={handleInstagramShare} disabled={isSaving} className="flex flex-col items-center gap-3 group p-2 rounded-xl hover:bg-gray-50 transition">
+                <div className="w-14 h-14 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform text-white">
+                  <span className="text-2xl">📸</span>
                 </div>
-                <span className="text-xs text-gray-600 font-medium">이미지저장</span>
+                <span className="text-xs text-gray-600 font-bold">인스타 스토리</span>
               </button>
             </div>
           </div>
@@ -532,7 +544,7 @@ const MusicTaste = () => {
                 alt="Saved Result" 
                 fill 
                 className="object-contain"
-                unoptimized // Base64 이미지이므로 최적화 해제
+                unoptimized 
               />
             </div>
             <button 
