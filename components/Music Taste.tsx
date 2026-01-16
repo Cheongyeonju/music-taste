@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Script from 'next/script';
 import html2canvas from 'html2canvas';
 import { RECIPES, DishCode, ChefInfo } from '@/constants/dishData';
 
@@ -27,7 +28,6 @@ const RECIPES_KO: Record<string, { name: string; description: string; tags: stri
   'default': { name: '오늘의 쉐프 추천', description: '분석할 수 없는 신비로운 취향이네요! 쉐프가 엄선한 랜덤 코스를 제공합니다.', tags: ['미스테리'] }
 };
 
-// 2. 영어 질문 데이터
 const QUESTIONS_EN = [
   {
     category: 'BASE',
@@ -71,7 +71,6 @@ const QUESTIONS_EN = [
   }
 ];
 
-// 3. 한국어 질문 데이터
 const QUESTIONS_KO = [
   {
     category: '베이스 (BASE)',
@@ -115,7 +114,6 @@ const QUESTIONS_KO = [
   }
 ];
 
-// 4. UI 텍스트 (Music Tasty 컨셉 적용)
 const UI_TEXT = {
   en: {
     introTitle: <>What&apos;s Your <br/><span className="text-neon-gradient">Music Tasty?</span></>,
@@ -129,7 +127,8 @@ const UI_TEXT = {
     headChefs: "Similar Artists",
     playBtn: "Listen Playlist",
     homeBtn: "Home",
-    shareBtn: "Share Tasty",
+    shareBtn: "Share",
+    saveBtn: "Save Img",
     metrics: [
       { label: 'BASE', left: 'Melody', right: 'Story' },
       { label: 'INTENSITY', left: 'Mild', right: 'Spicy' },
@@ -147,9 +146,10 @@ const UI_TEXT = {
     analysis: "취향 분석표",
     tastingNotes: "테이스팅 노트",
     headChefs: "추천 아티스트",
-    playBtn: "플리 들어보기",
+    playBtn: "플레이리스트 바로 듣기",
     homeBtn: "처음으로",
-    shareBtn: "결과 공유하기",
+    shareBtn: "테스트 공유",
+    saveBtn: "이미지 저장",
     metrics: [
       { label: '베이스', left: '선율', right: '서사' },
       { label: '맵기', left: '순한맛', right: '매운맛' },
@@ -166,6 +166,12 @@ const METRIC_VALUES = [
   { leftVal: 'F', rightVal: 'H' },
 ];
 
+declare global {
+  interface Window {
+    Kakao: any;
+  }
+}
+
 const MusicTaste = () => {
   const router = useRouter();
   const [lang, setLang] = useState<'en' | 'ko'>('en'); 
@@ -174,13 +180,24 @@ const MusicTaste = () => {
   const [resultCode, setResultCode] = useState<string>('default');
   const [chefs, setChefs] = useState<ChefInfo[]>([]);
   const [emoji, setEmoji] = useState<string>('🍽️');
-  
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
   const ticketRef = useRef<HTMLDivElement>(null);
 
   const t = UI_TEXT[lang];
   const currentQuestions = lang === 'ko' ? QUESTIONS_KO : QUESTIONS_EN;
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.Kakao) {
+      if (!window.Kakao.isInitialized()) {
+        // [필수] 본인의 카카오 JavaScript 키를 입력하세요
+        window.Kakao.init('YOUR_KAKAO_JS_KEY'); 
+      }
+    }
+  }, []);
 
   const handleSelect = (idx: number, value: DishCode) => {
     if (selectedOption !== null) return;
@@ -227,38 +244,64 @@ const MusicTaste = () => {
   
   const finalResultData = getResultText();
 
-  const handleShare = async () => {
+  // 이미지 저장 (다운로드)
+  const handleDownloadImage = async () => {
     if (!ticketRef.current) return;
+    setIsSaving(true);
     try {
+      const wasModalOpen = isShareModalOpen;
+      if(wasModalOpen) setIsShareModalOpen(false);
+      
+      await new Promise(res => setTimeout(res, 100));
+
       const canvas = await html2canvas(ticketRef.current, { backgroundColor: '#ffffff', scale: 2 });
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
-        const file = new File([blob], 'music_tasty_result.png', { type: 'image/png' });
-
-        const shareTitle = lang === 'en' ? "What's Your Music Tasty?" : "당신의 음악은 무슨 맛인가요?";
-        const shareText = lang === 'en' 
-            ? `My Music Tasty result: ${finalResultData.name} ${emoji}`
-            : `내 음악 취향은 '${finalResultData.name}' ${emoji} #MusicTasty`;
-
-        const shareData = {
-          title: shareTitle,
-          text: shareText,
-          url: `${window.location.origin}?code=${resultCode}`,
-          files: [file], 
-        };
-
-        if (navigator.share && navigator.canShare(shareData)) {
-          await navigator.share(shareData);
-        } else {
-          await navigator.clipboard.writeText(window.location.href);
-          alert(lang === 'en' ? 'Link copied!' : '링크가 복사되었습니다!');
-        }
-      }, 'image/png');
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = `MusicTasty_${resultCode}.png`;
+      link.click();
+      
+      if(wasModalOpen) setIsShareModalOpen(true);
     } catch (err) {
       console.error(err);
-      await navigator.clipboard.writeText(window.location.href);
-      alert(lang === 'en' ? 'Link copied!' : '링크가 복사되었습니다!');
+      alert('이미지 저장에 실패했습니다. (인앱 브라우저에서는 제한될 수 있습니다)');
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      const url = `${window.location.origin}?code=${resultCode}`;
+      await navigator.clipboard.writeText(url);
+      alert(lang === 'en' ? 'Link Copied!' : '링크가 복사되었습니다!');
+      setIsShareModalOpen(false);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleKakaoShare = () => {
+    if (typeof window === 'undefined' || !window.Kakao || !window.Kakao.isInitialized()) {
+      alert('카카오톡 공유 기능을 불러오지 못했습니다.');
+      return;
+    }
+
+    const shareUrl = `${window.location.origin}?code=${resultCode}`;
+    const title = lang === 'en' ? "Music Tasty" : "당신의 음악은 무슨 맛인가요?";
+    const desc = `${finalResultData.name} ${emoji}`;
+
+    window.Kakao.Share.sendDefault({
+      objectType: 'feed',
+      content: {
+        title: title,
+        description: desc,
+        imageUrl: `${window.location.origin}/api/og?code=${resultCode}`,
+        link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
+      },
+      buttons: [
+        { title: '결과 확인하기', link: { mobileWebUrl: shareUrl, webUrl: shareUrl } },
+      ],
+    });
   };
 
   const SectionDivider = ({ title }: { title: string }) => (
@@ -273,6 +316,13 @@ const MusicTaste = () => {
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 font-sans text-white select-none relative">
+      
+      <Script src="https://t1.kakaocdn.net/kakao_js_sdk/2.6.0/kakao.min.js" integrity="sha384-6MFdIr0zOira1CHQkedUqJVql0YtcZA1P0nbPrQYJXVJZz0RWLXYy6Stq728HJp2" crossOrigin="anonymous" onLoad={() => {
+          if (window.Kakao && !window.Kakao.isInitialized()) {
+             window.Kakao.init('YOUR_KAKAO_JS_KEY'); // [필수] 키 입력
+          }
+      }} />
+
       <div className="absolute top-4 right-4 z-50">
         <button 
           onClick={() => setLang(prev => prev === 'en' ? 'ko' : 'en')}
@@ -284,9 +334,17 @@ const MusicTaste = () => {
 
       {step === 0 && (
         <div className="text-center space-y-6 animate-fade-in max-w-2xl relative">
-          <div className="inline-block p-4 rounded-full bg-gray-800 border border-gray-700 mb-4 shadow-xl">
-             <span className="text-6xl filter drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">🎵</span>
+          
+          {/* 접시 위에 '음식처럼' 놓인 음표 아이콘 */}
+          <div className="inline-block p-6 rounded-full bg-gray-800 border border-gray-700 mb-6 shadow-2xl relative overflow-visible">
+             <div className="relative w-24 h-24 flex items-center justify-center filter drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">
+               {/* 접시 (바닥) */}
+               <span className="text-[5rem] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-90 select-none">🍽️</span>
+               {/* 음표 (위) - 크기 절반으로 축소 (3.5rem -> 1.75rem) */}
+               <span className="text-[1.75rem] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 select-none drop-shadow-lg mt-2">🎵</span>
+             </div>
           </div>
+
           <h1 className="text-4xl md:text-5xl font-black tracking-tighter uppercase leading-tight">
             {t.introTitle}
           </h1>
@@ -388,17 +446,79 @@ const MusicTaste = () => {
             <div className="mt-4 pt-2 flex justify-center opacity-60">
               <div className="h-5 w-28 bg-[url('https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/UPC-A-036000291452.svg/1200px-UPC-A-036000291452.svg.png')] bg-cover"></div>
             </div>
-            <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex items-center justify-center gap-2 opacity-90">
-                <div className="text-xs font-black tracking-widest text-gray-400">MUSIC TASTY</div>
+
+            {/* Footer: 심볼 + 로고 이미지 2개 */}
+            <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex items-center justify-center gap-3 opacity-90">
+                <div className="relative w-6 h-6"> 
+                    <Image src="/logo_symbol.png" alt="Symbol" fill className="object-contain" />
+                </div>
+                <div className="relative w-20 h-5"> 
+                    <Image src="/logo_text.png" alt="Logo Type" fill className="object-contain" />
+                </div>
             </div>
+            
              <div className="absolute bottom-[-10px] left-0 w-full h-[10px] bg-white" style={{ clipPath: 'polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)'}}></div>
           </div>
-          <div className="mt-6 flex flex-col gap-2 px-2">
-            <div className="flex gap-2">
-              <button onClick={() => router.push('/radio')} className="flex-[2] py-3 bg-neon-gradient text-white rounded-lg font-bold text-xs shadow-lg shadow-purple-900/30 hover:scale-[1.02] transition-transform flex items-center justify-center gap-1"><span>🎧</span> {t.playBtn}</button>
-              <button onClick={() => window.location.href = '/'} className="flex-1 py-3 bg-[#1A1A1A] border border-gray-700 text-gray-300 rounded-lg font-bold hover:bg-[#252525] hover:text-white transition text-xs flex items-center justify-center gap-1"><span>🏠</span> {t.homeBtn}</button>
+
+          {/* 버튼 배치 변경 (큰 버튼 + 3개 버튼 1줄) */}
+          <div className="mt-6 flex flex-col gap-2 px-1">
+            {/* 제일 큰 버튼: 플레이리스트 듣기 */}
+            <button 
+                onClick={() => router.push('/radio')} 
+                className="w-full py-4 bg-neon-gradient text-white rounded-xl font-bold text-base shadow-lg shadow-purple-900/40 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
+            >
+                <span className="text-xl">🎧</span> {t.playBtn}
+            </button>
+
+            {/* 나머지 3개 버튼 한 줄 배치 */}
+            <div className="grid grid-cols-3 gap-2">
+                {/* 처음으로 */}
+                <button onClick={() => window.location.href = '/'} className="py-3 bg-[#1A1A1A] border border-gray-700 text-gray-300 rounded-lg font-bold hover:bg-[#252525] hover:text-white transition text-xs flex flex-col items-center justify-center gap-1">
+                    <span className="text-lg">🏠</span> {t.homeBtn}
+                </button>
+                {/* 이미지 저장 (바로 실행) */}
+                <button onClick={handleDownloadImage} disabled={isSaving} className="py-3 bg-gray-800 border border-gray-600 text-white rounded-lg font-bold hover:bg-gray-700 transition text-xs flex flex-col items-center justify-center gap-1">
+                    <span className="text-lg">{isSaving ? '...' : '💾'}</span> {t.saveBtn}
+                </button>
+                {/* 테스트 공유 (모달) */}
+                <button onClick={() => setIsShareModalOpen(true)} className="py-3 bg-white text-black rounded-lg font-bold text-xs hover:bg-gray-200 transition flex flex-col items-center justify-center gap-1">
+                    <span className="text-lg">🔗</span> {t.shareBtn}
+                </button>
             </div>
-            <button onClick={handleShare} className="w-full py-3 bg-white text-black rounded-lg font-bold text-xs hover:bg-gray-200 transition flex items-center justify-center gap-1 shadow-sm"><span>🔗</span> {t.shareBtn}</button>
+          </div>
+        </div>
+      )}
+
+      {isShareModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsShareModalOpen(false)}>
+          <div className="w-full max-w-sm bg-white rounded-t-2xl p-6 pb-10 space-y-6 transform transition-transform duration-300 ease-out" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center">
+              <h3 className="text-black font-bold text-lg">친구에게 공유하기</h3>
+              <button onClick={() => setIsShareModalOpen(false)} className="text-gray-400 hover:text-black p-1">✕</button>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-4 px-4">
+              <button onClick={handleKakaoShare} className="flex flex-col items-center gap-2 group">
+                <div className="w-14 h-14 bg-[#FEE500] rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                  <span className="text-black font-black text-xl">K</span>
+                </div>
+                <span className="text-xs text-gray-600 font-medium">카카오톡</span>
+              </button>
+
+              <button onClick={handleCopyLink} className="flex flex-col items-center gap-2 group">
+                <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                  <span className="text-2xl">🔗</span>
+                </div>
+                <span className="text-xs text-gray-600 font-medium">링크복사</span>
+              </button>
+
+              <button onClick={handleDownloadImage} className="flex flex-col items-center gap-2 group">
+                <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                  <span className="text-2xl">💾</span>
+                </div>
+                <span className="text-xs text-gray-600 font-medium">이미지저장</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

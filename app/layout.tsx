@@ -2,19 +2,17 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  // [수정] 사이트 탭 이름
   title: "Music Tasty | 당신의 음악은 무슨 맛인가요?", 
   description: "내 음악 취향을 분석하고, 나만의 플레이리스트 맛을 찾아보세요.",
   
-  // [수정] 카카오톡/SNS 기본 공유 정보
   openGraph: {
     title: "Music Tasty : 내 음악 취향 분석",
     description: "당신의 음악은 무슨 맛인가요? 지금 확인해보세요.",
-    url: "https://music-taste-hanul.vercel.app", // 배포 주소 확인!
+    url: "https://music-taste-hanul.vercel.app", 
     siteName: "Music Tasty",
     images: [
       {
-        url: "/og-image.png",
+        url: "/api/og", // [수정] 파일 경로 대신 API 경로로 변경
         width: 1200,
         height: 630,
         alt: "Music Tasty Main",
@@ -24,6 +22,7 @@ export const metadata: Metadata = {
     type: "website",
   },
 };
+
 
 export default function RootLayout({
   children,

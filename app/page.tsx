@@ -25,7 +25,7 @@ export async function generateMetadata(
   // 4. 결과가 있으면 그 결과에 맞는 제목/설명 설정
   const title = recipe 
     ? `내 음악 취향은 '${recipe.name}' ${recipe.emoji}`
-    : "음악 취향 오마카세 테스트";
+    : "Music Tasty | 당신의 음악은 무슨 맛인가요?";
     
   const description = recipe
     ? `당신도 테스트해보세요! #음악취향 #오마카세`
