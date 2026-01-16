@@ -184,6 +184,9 @@ const MusicTaste = () => {
   
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // [추가] 이미지 저장 모달 상태
+  const [savedImageUrl, setSavedImageUrl] = useState<string | null>(null);
 
   const ticketRef = useRef<HTMLDivElement>(null);
 
@@ -193,7 +196,7 @@ const MusicTaste = () => {
   useEffect(() => {
     if (typeof window !== 'undefined' && window.Kakao) {
       if (!window.Kakao.isInitialized()) {
-        // [필수] 본인의 카카오 JavaScript 키를 입력하세요
+        // [중요] YOUR_KAKAO_JS_KEY를 본인의 실제 앱 키로 바꿔주세요
         window.Kakao.init('YOUR_KAKAO_JS_KEY'); 
       }
     }
@@ -244,7 +247,7 @@ const MusicTaste = () => {
   
   const finalResultData = getResultText();
 
-  // 이미지 저장 (다운로드)
+  // [수정] 이미지 생성 후 '다운로드 시도' 대신 '모달 띄우기'로 변경
   const handleDownloadImage = async () => {
     if (!ticketRef.current) return;
     setIsSaving(true);
@@ -255,15 +258,15 @@ const MusicTaste = () => {
       await new Promise(res => setTimeout(res, 100));
 
       const canvas = await html2canvas(ticketRef.current, { backgroundColor: '#ffffff', scale: 2 });
-      const link = document.createElement('a');
-      link.href = canvas.toDataURL('image/png');
-      link.download = `MusicTasty_${resultCode}.png`;
-      link.click();
+      const imageUrl = canvas.toDataURL('image/png');
+      
+      // 모바일 등에서 저장 실패를 방지하기 위해, 이미지를 팝업으로 띄워줌
+      setSavedImageUrl(imageUrl);
       
       if(wasModalOpen) setIsShareModalOpen(true);
     } catch (err) {
       console.error(err);
-      alert('이미지 저장에 실패했습니다. (인앱 브라우저에서는 제한될 수 있습니다)');
+      alert('이미지 생성에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -335,13 +338,10 @@ const MusicTaste = () => {
       {step === 0 && (
         <div className="text-center space-y-6 animate-fade-in max-w-2xl relative">
           
-          {/* 접시 위에 '음식처럼' 놓인 음표 아이콘 */}
           <div className="inline-block p-6 rounded-full bg-gray-800 border border-gray-700 mb-6 shadow-2xl relative overflow-visible">
              <div className="relative w-24 h-24 flex items-center justify-center filter drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">
-               {/* 접시 (바닥) */}
                <span className="text-[5rem] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-90 select-none">🍽️</span>
-               {/* 음표 (위) - 크기 절반으로 축소 (3.5rem -> 1.75rem) */}
-               <span className="text-[1.75rem] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 select-none drop-shadow-lg mt-2">🎵</span>
+               <span className="text-[1.75rem] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 select-none drop-shadow-lg mt-1">🎵</span>
              </div>
           </div>
 
@@ -447,7 +447,7 @@ const MusicTaste = () => {
               <div className="h-5 w-28 bg-[url('https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/UPC-A-036000291452.svg/1200px-UPC-A-036000291452.svg.png')] bg-cover"></div>
             </div>
 
-            {/* Footer: 심볼 + 로고 이미지 2개 */}
+            {/* Footer: 심볼 + 로고 이미지 */}
             <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex items-center justify-center gap-3 opacity-90">
                 <div className="relative w-6 h-6"> 
                     <Image src="/logo_symbol.png" alt="Symbol" fill className="object-contain" />
@@ -460,9 +460,7 @@ const MusicTaste = () => {
              <div className="absolute bottom-[-10px] left-0 w-full h-[10px] bg-white" style={{ clipPath: 'polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)'}}></div>
           </div>
 
-          {/* 버튼 배치 변경 (큰 버튼 + 3개 버튼 1줄) */}
           <div className="mt-6 flex flex-col gap-2 px-1">
-            {/* 제일 큰 버튼: 플레이리스트 듣기 */}
             <button 
                 onClick={() => router.push('/radio')} 
                 className="w-full py-4 bg-neon-gradient text-white rounded-xl font-bold text-base shadow-lg shadow-purple-900/40 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
@@ -470,17 +468,13 @@ const MusicTaste = () => {
                 <span className="text-xl">🎧</span> {t.playBtn}
             </button>
 
-            {/* 나머지 3개 버튼 한 줄 배치 */}
             <div className="grid grid-cols-3 gap-2">
-                {/* 처음으로 */}
                 <button onClick={() => window.location.href = '/'} className="py-3 bg-[#1A1A1A] border border-gray-700 text-gray-300 rounded-lg font-bold hover:bg-[#252525] hover:text-white transition text-xs flex flex-col items-center justify-center gap-1">
                     <span className="text-lg">🏠</span> {t.homeBtn}
                 </button>
-                {/* 이미지 저장 (바로 실행) */}
                 <button onClick={handleDownloadImage} disabled={isSaving} className="py-3 bg-gray-800 border border-gray-600 text-white rounded-lg font-bold hover:bg-gray-700 transition text-xs flex flex-col items-center justify-center gap-1">
                     <span className="text-lg">{isSaving ? '...' : '💾'}</span> {t.saveBtn}
                 </button>
-                {/* 테스트 공유 (모달) */}
                 <button onClick={() => setIsShareModalOpen(true)} className="py-3 bg-white text-black rounded-lg font-bold text-xs hover:bg-gray-200 transition flex flex-col items-center justify-center gap-1">
                     <span className="text-lg">🔗</span> {t.shareBtn}
                 </button>
@@ -489,6 +483,7 @@ const MusicTaste = () => {
         </div>
       )}
 
+      {/* 공유 옵션 모달 */}
       {isShareModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsShareModalOpen(false)}>
           <div className="w-full max-w-sm bg-white rounded-t-2xl p-6 pb-10 space-y-6 transform transition-transform duration-300 ease-out" onClick={e => e.stopPropagation()}>
@@ -519,6 +514,34 @@ const MusicTaste = () => {
                 <span className="text-xs text-gray-600 font-medium">이미지저장</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* [추가] 이미지 저장용 팝업 모달 */}
+      {savedImageUrl && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSavedImageUrl(null)}>
+          <div className="max-w-sm w-full bg-white rounded-xl p-4 flex flex-col items-center space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-lg text-black">이미지 저장</h3>
+            <p className="text-sm text-gray-500 text-center">
+              아래 이미지를 <span className="font-bold text-purple-600">길게 눌러서</span><br/>
+              &apos;사진 앱에 저장&apos;을 선택해주세요.
+            </p>
+            <div className="relative w-full aspect-[3/4] shadow-lg rounded-lg overflow-hidden border border-gray-200">
+              <Image 
+                src={savedImageUrl} 
+                alt="Saved Result" 
+                fill 
+                className="object-contain"
+                unoptimized // Base64 이미지이므로 최적화 해제
+              />
+            </div>
+            <button 
+              onClick={() => setSavedImageUrl(null)}
+              className="w-full py-3 bg-gray-900 text-white rounded-lg font-bold hover:bg-gray-800 transition"
+            >
+              닫기
+            </button>
           </div>
         </div>
       )}
