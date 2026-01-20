@@ -3,15 +3,15 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
-// 폰트 주소 (구글 공식 gstatic - 가장 빠르고 안정적)
-const fontEndpoint = 'https://fonts.gstatic.com/s/nanumgothic/v23/PN_3Rfi-oW3hYwmKDpxS7F_z-7r5.ttf';
-
 export async function GET(request: NextRequest) {
   try {
-    // 1. 폰트 로드 (캐시 적용)
-    const fontData = await fetch(new URL(fontEndpoint, import.meta.url), {
-      cache: 'force-cache',
-    }).then((res) => res.arrayBuffer());
+    // 1. 폰트 로드: 가장 단순하고 확실한 방법으로 변경
+    const fontData = await fetch(
+      'https://fonts.gstatic.com/s/nanumgothic/v23/PN_3Rfi-oW3hYwmKDpxS7F_z-7r5.ttf'
+    ).then((res) => {
+      if (!res.ok) throw new Error('Font network error');
+      return res.arrayBuffer();
+    });
 
     return new ImageResponse(
       (
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
             fontFamily: '"NanumGothic"',
           }}
         >
-          {/* 로고 아이콘 (위치 보정 유지) */}
+          {/* 로고 아이콘 */}
           <div
             style={{
               display: 'flex',
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
               marginBottom: '30px',
               fontSize: '50px',
               textAlign: 'center',
-              transform: 'translateY(-5px)', 
+              transform: 'translateY(-5px)',
             }}
           >
             🍽️
@@ -51,24 +51,15 @@ export async function GET(request: NextRequest) {
             WHAT'S YOUR
           </div>
 
-          {/* ★ 하단 텍스트: MUSIC TASTY? ★ */}
-          <div
-            style={{
-              display: 'flex',
-              fontSize: 60,
-              fontWeight: 700,
-              // [핵심 수정] 부모 컨테이너 자체에 오른쪽 여백을 넉넉히 줍니다.
-              paddingRight: '30px', 
-              // 혹시 모를 잘림 방지를 위해 overflow 속성 명시
-              overflow: 'visible', 
-            }}
-          >
+          {/* 하단 텍스트 */}
+          <div style={{ display: 'flex', fontSize: 60, fontWeight: 700, alignItems: 'center' }}>
             <span style={{ color: '#a855f7' }}>MUSIC</span>
             <span style={{ width: 15 }} />
-            {/* span 태그에 있던 paddingRight는 제거했습니다. */}
-            <span style={{ color: '#60a5fa' }}> 
-              TASTY?
-            </span>
+            <span style={{ color: '#60a5fa' }}>TASTY?</span>
+            
+            {/* ★ [수정] 물음표 잘림 방지용 투명 스페이서 (가장 안전한 방법) */}
+            {/* 글자 뒤에 10px짜리 빈 공간을 강제로 만듭니다. */}
+            <span style={{ width: 10, height: 10 }} /> 
           </div>
         </div>
       ),
@@ -87,6 +78,9 @@ export async function GET(request: NextRequest) {
     );
   } catch (e: any) {
     console.error(e);
-    return new Response('Failed', { status: 500 });
+    // 에러 발생 시 빈 화면 대신 에러 메시지를 띄웁니다.
+    return new Response(`Image Generation Failed: ${e.message}`, {
+      status: 500,
+    });
   }
 }
