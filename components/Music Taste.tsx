@@ -5,28 +5,8 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Script from 'next/script';
 import html2canvas from 'html2canvas';
-import { RECIPES, DishCode, ChefInfo } from '@/constants/dishData';
+import { RECIPES, RECIPES_KO, DishCode, ChefInfo } from '@/constants/dishData';
 
-// 1. 결과 한글 데이터
-const RECIPES_KO: Record<string, { name: string; description: string; tags: string[] }> = {
-  'SCOF': { name: '달콤한 어쿠스틱 수플레', description: '입안에서 사르르 녹는 멜로디. 호불호 없이 누구나 편안하게 즐길 수 있는 부드러운 디저트 같은 코스입니다.', tags: ['달콤함', '어쿠스틱', '이지리스닝'] },
-  'SCOH': { name: '숨겨진 숲속의 허브티', description: '나만 알고 싶은 맑은 향기. 자극적이지 않고 자연 그대로의 소리를 담은 힐링 티 타임입니다.', tags: ['유기농', '인디포크', '힐링'] },
-  'SCPF': { name: '도심의 밤 칵테일', description: '세련된 도시의 야경을 닮은 맛. 적당히 트렌디하고 몽환적인 분위기에 취해보세요.', tags: ['시티팝', 'R&B', '세련된'] },
-  'SCPH': { name: '몽환적인 구름 무스', description: '새벽 감성을 자극하는 폭신한 질감. 현실을 잠시 잊게 만드는 꿈결 같은 맛입니다.', tags: ['Lo-Fi', '몽환', '힙스터'] },
-  'SDOF': { name: '청량한 스파클링 에이드', description: '가슴이 뻥 뚫리는 시원한 탄산! 답답한 속을 시원하게 날려버릴 밴드 사운드를 처방합니다.', tags: ['청량', '록', '드라이브'] },
-  'SDOH': { name: '거친 야생의 바베큐', description: '다듬어지지 않은 불맛 그대로. 정형화된 레시피를 거부하는 당신을 위한 와일드한 요리입니다.', tags: ['얼터너티브', '개러지', '유니크'] },
-  'SDPF': { name: '톡 쏘는 팝핑 캔디', description: '입안에서 터지는 강렬한 비트와 중독성! 가만히 있을 수 없게 만드는 에너지가 넘칩니다.', tags: ['댄스', 'K-POP', '에너지'] },
-  'SDPH': { name: '자극적인 퓨전 마라맛', description: '예측할 수 없는 독특한 향신료의 조화. 평범함을 거부하는 당신을 위한 실험적인 별미입니다.', tags: ['글리치', '전자음악', '실험적'] },
-  'BCOF': { name: '따뜻한 집밥 정식', description: '오래된 일기장을 꺼내 보듯 익숙하고 포근한 맛. 가사 하나하나가 마음에 와닿아 위로를 건넵니다.', tags: ['발라드', '위로', '공감'] },
-  'BCOH': { name: '담백한 호밀빵 브런치', description: '화려한 소스 없이 재료 본연의 깊은 맛. 담담하게 읊조리는 가사가 긴 여운을 남깁니다.', tags: ['인디', '서정적', '새벽'] },
-  'BCPF': { name: '진한 다크 초콜릿', description: '쌉싸름하지만 깊은 풍미가 있는 R&B. 분위기 잡고 싶은 날 꺼내 먹기 좋은 고급스러운 맛입니다.', tags: ['R&B', '그루브', '딥'] },
-  'BCPH': { name: '보랏빛 새벽 와인', description: '복잡한 마음을 달래주는 깊은 향기. 우울하지만 아름다운 감성에 젖어들기 좋은 한 잔입니다.', tags: ['새벽감성', '얼터너티브', '무드'] },
-  'BDOF': { name: '웅장한 스테이크 플래터', description: '모두가 하나 되어 즐기는 메인 디시. 드라마틱한 전개와 벅찬 서사가 배부른 만족감을 줍니다.', tags: ['앤썸', '드라마틱', '록'] },
-  'BDOH': { name: '얼큰한 해장국', description: '속 시원하게 할 말은 하는 사이다 같은 맛. 거침없는 가사가 답답한 체증을 내려줍니다.', tags: ['힙합', '메시지', '강렬'] },
-  'BDPF': { name: '미슐랭 시그니처 코스', description: '서사와 대중성, 맛의 밸런스가 완벽한 요리. 누구나 인정할 수밖에 없는 웰메이드 명곡입니다.', tags: ['명곡', '트렌드', '올라운더'] },
-  'BDPH': { name: '심오한 예술가 디저트', description: '음악을 넘어 하나의 예술 작품 같은 맛. 아티스트의 철학을 음미하는 미식가를 위한 접시입니다.', tags: ['예술', '컨셉추얼', '철학'] },
-  'default': { name: '오늘의 쉐프 추천', description: '분석할 수 없는 신비로운 취향이네요! 쉐프가 엄선한 랜덤 코스를 제공합니다.', tags: ['미스테리'] }
-};
 
 const QUESTIONS_EN = [
   {
@@ -96,7 +76,8 @@ const QUESTIONS_KO = [
     category: '질감 (TEXTURE)',
     query: '어떤 음악적 질감을 선호하시나요?',
     options: [
-      { text: '자연산 (Raw)', subtext: '꾸밈없는 목소리와 통기타', value: 'O', icon: '🪵' },
+      // [수정] 자연산 -> 자연식
+      { text: '자연식 (Raw)', subtext: '꾸밈없는 목소리와 통기타', value: 'O', icon: '🪵' },
       { text: '유기농 (Acoustic)', subtext: '따뜻하고 인간적인 울림', value: 'O', icon: '🎸' },
       { text: '가공 (Electric)', subtext: '세련된 신디사이저 사운드', value: 'P', icon: '⚡' },
       { text: '퓨전 (Trendy)', subtext: '몽환적이고 힙한 이펙트', value: 'P', icon: '🌌' }
@@ -138,7 +119,8 @@ const UI_TEXT = {
   },
   ko: {
     introTitle: <>당신의 음악은 <br/><span className="text-neon-gradient">무슨 맛인가요?</span></>,
-    introDesc: "당신의 음악 DNA를 분석해 맛있는 코스 요리로 제공해 드립니다.",
+    // [수정] 요청하신 인트로 문구 적용
+    introDesc: <>음악이 음식이라면, 당신의 취향은 어떤 맛일까요?<br/>지금 바로 분석하고 맛있는 플레이리스트를 즐겨보세요.</>,
     startBtn: "테스트 시작하기",
     step: "단계",
     back: "← 뒤로",
@@ -153,7 +135,8 @@ const UI_TEXT = {
     metrics: [
       { label: '베이스', left: '선율', right: '서사' },
       { label: '맵기', left: '순한맛', right: '매운맛' },
-      { label: '질감', left: '자연산', right: '가공' },
+      // [수정] 자연산 -> 자연식
+      { label: '질감', left: '자연식', right: '가공' },
       { label: '토핑', left: '클래식', right: '스페셜' },
     ]
   }
@@ -272,7 +255,8 @@ const MusicTaste = () => {
 
   const handleCopyLink = async () => {
     try {
-      const url = `${window.location.origin}?code=${resultCode}`;
+      // [수정] /share/[code] 경로를 사용하여 공유 페이지로 유도
+      const url = `${window.location.origin}/share/${resultCode}`;
       await navigator.clipboard.writeText(url);
       alert(lang === 'en' ? 'Link Copied!' : '링크가 복사되었습니다!');
       setIsShareModalOpen(false);
@@ -281,26 +265,23 @@ const MusicTaste = () => {
     }
   };
 
-  // [신규] 인스타그램 스토리 공유 핸들러 (Web Share API 활용)
+  // [신규] 인스타그램 스토리 공유 (Web Share API 활용)
   const handleInstagramShare = async () => {
     if (!ticketRef.current) return;
     setIsSaving(true);
     try {
-      // 1. 이미지를 생성합니다.
       const canvas = await html2canvas(ticketRef.current, { 
         backgroundColor: '#ffffff', 
         scale: 2, 
         useCORS: true 
       });
       
-      // 2. Blob으로 변환
       const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
       if (!blob) throw new Error('Blob 생성 실패');
 
-      // 3. 파일 객체 생성
       const file = new File([blob], 'music_tasty_result.png', { type: 'image/png' });
 
-      // 4. 모바일 공유하기 기능 시도 (Web Share API)
+      // 모바일 공유하기 (파일 공유 지원 시)
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
@@ -308,7 +289,7 @@ const MusicTaste = () => {
           text: '나의 음악 취향 결과입니다! #MusicTasty',
         });
       } else {
-        // 5. PC나 지원하지 않는 브라우저일 경우: 다운로드 후 안내
+        // PC 등 미지원 시 다운로드 처리
         const link = document.createElement('a');
         link.href = canvas.toDataURL('image/png');
         link.download = 'music_tasty_result.png';
@@ -355,7 +336,7 @@ const MusicTaste = () => {
       {step === 0 && (
         <div className="text-center space-y-6 animate-fade-in max-w-2xl relative">
           
-          {/* 아이콘: '접시+음표' (1/2 사이즈) */}
+          {/* [수정] 아이콘: 1/2 크기 축소 (w-14 h-14) */}
           <div className="inline-block p-4 rounded-full bg-gray-800 border border-gray-700 mb-6 shadow-xl relative overflow-visible">
              <div className="relative w-14 h-14 flex items-center justify-center filter drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
                <span className="text-[3.5rem] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-90 select-none">🍽️</span>
@@ -501,7 +482,7 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 공유 옵션 모달: 링크 복사 & 인스타그램 스토리 (2가지 옵션) */}
+      {/* [수정] 공유 모달: 링크복사 & 인스타스토리 (2가지 옵션) */}
       {isShareModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsShareModalOpen(false)}>
           <div className="w-full max-w-sm bg-white rounded-t-2xl p-6 pb-10 space-y-6 transform transition-transform duration-300 ease-out" onClick={e => e.stopPropagation()}>
