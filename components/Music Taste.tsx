@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Script from 'next/script';
 import html2canvas from 'html2canvas';
+// [중요] 데이터는 이제 constants 파일에서 가져옵니다.
 import { RECIPES, RECIPES_KO, DishCode, ChefInfo } from '@/constants/dishData';
-
 
 const QUESTIONS_EN = [
   {
@@ -76,7 +76,6 @@ const QUESTIONS_KO = [
     category: '질감 (TEXTURE)',
     query: '어떤 음악적 질감을 선호하시나요?',
     options: [
-      // [수정] 자연산 -> 자연식
       { text: '자연식 (Raw)', subtext: '꾸밈없는 목소리와 통기타', value: 'O', icon: '🪵' },
       { text: '유기농 (Acoustic)', subtext: '따뜻하고 인간적인 울림', value: 'O', icon: '🎸' },
       { text: '가공 (Electric)', subtext: '세련된 신디사이저 사운드', value: 'P', icon: '⚡' },
@@ -119,8 +118,7 @@ const UI_TEXT = {
   },
   ko: {
     introTitle: <>당신의 음악은 <br/><span className="text-neon-gradient">무슨 맛인가요?</span></>,
-    // [수정] 요청하신 인트로 문구 적용
-    introDesc: <>음악이 음식이라면, 당신의 취향은 어떤 맛일까요?<br/>지금 바로 분석하고 맛있는 플레이리스트를 즐겨보세요.</>,
+    introDesc: <>당신의 귀가 가장 좋아하는 &apos;맛&apos;을 찾아,<br/>세상에 없던 특별한 메뉴를 제공합니다.</>,
     startBtn: "테스트 시작하기",
     step: "단계",
     back: "← 뒤로",
@@ -135,7 +133,6 @@ const UI_TEXT = {
     metrics: [
       { label: '베이스', left: '선율', right: '서사' },
       { label: '맵기', left: '순한맛', right: '매운맛' },
-      // [수정] 자연산 -> 자연식
       { label: '질감', left: '자연식', right: '가공' },
       { label: '토핑', left: '클래식', right: '스페셜' },
     ]
@@ -228,34 +225,50 @@ const MusicTaste = () => {
   
   const finalResultData = getResultText();
 
+  // [수정] 이미지 저장 함수 (CORS 무시, 모바일 팝업 강제)
   const handleDownloadImage = async () => {
     if (!ticketRef.current) return;
     setIsSaving(true);
+    
     try {
-      setIsShareModalOpen(false); 
-      
-      await new Promise(res => setTimeout(res, 200));
-
       const canvas = await html2canvas(ticketRef.current, { 
         backgroundColor: '#ffffff', 
-        scale: 2,
-        useCORS: true 
+        scale: 2, 
+        useCORS: true, 
+        allowTaint: true,
+        logging: true,
       });
       
       const imageUrl = canvas.toDataURL('image/png');
-      setSavedImageUrl(imageUrl);
+
+      // 모바일 체크
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      if (isMobile) {
+        // 모바일은 팝업을 띄워 길게 눌러 저장 유도
+        setSavedImageUrl(imageUrl);
+      } else {
+        // PC는 바로 다운로드 트리거
+        const link = document.createElement('a');
+        link.href = imageUrl;
+        link.download = 'music_tasty_result.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
       
     } catch (err) {
-      console.error(err);
-      alert('이미지 생성 중 오류가 발생했습니다.');
+      console.error('이미지 생성 실패:', err);
+      alert('이미지 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setIsSaving(false);
+      setIsShareModalOpen(false);
     }
   };
 
   const handleCopyLink = async () => {
     try {
-      // [수정] /share/[code] 경로를 사용하여 공유 페이지로 유도
+      // /share/[code] 경로를 사용하여 공유 페이지로 유도
       const url = `${window.location.origin}/share/${resultCode}`;
       await navigator.clipboard.writeText(url);
       alert(lang === 'en' ? 'Link Copied!' : '링크가 복사되었습니다!');
@@ -265,7 +278,7 @@ const MusicTaste = () => {
     }
   };
 
-  // [신규] 인스타그램 스토리 공유 (Web Share API 활용)
+  // [수정] 인스타그램 공유 함수 (Web Share API + 폴백)
   const handleInstagramShare = async () => {
     if (!ticketRef.current) return;
     setIsSaving(true);
@@ -273,7 +286,8 @@ const MusicTaste = () => {
       const canvas = await html2canvas(ticketRef.current, { 
         backgroundColor: '#ffffff', 
         scale: 2, 
-        useCORS: true 
+        useCORS: true, 
+        allowTaint: true
       });
       
       const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -281,7 +295,7 @@ const MusicTaste = () => {
 
       const file = new File([blob], 'music_tasty_result.png', { type: 'image/png' });
 
-      // 모바일 공유하기 (파일 공유 지원 시)
+      // 모바일 공유하기 지원 시
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
@@ -289,16 +303,15 @@ const MusicTaste = () => {
           text: '나의 음악 취향 결과입니다! #MusicTasty',
         });
       } else {
-        // PC 등 미지원 시 다운로드 처리
-        const link = document.createElement('a');
-        link.href = canvas.toDataURL('image/png');
-        link.download = 'music_tasty_result.png';
-        link.click();
-        alert('이미지가 저장되었습니다. 인스타그램 스토리에 업로드해주세요!');
+        // PC나 미지원 브라우저: 다운로드 로직으로 폴백
+        const imageUrl = canvas.toDataURL('image/png');
+        setSavedImageUrl(imageUrl);
+        alert('이미지가 생성되었습니다. 길게 눌러 저장 후 인스타에 올려주세요!');
       }
     } catch (err) {
       console.error(err);
-      alert('공유하기를 지원하지 않는 환경입니다. 이미지 저장을 이용해주세요.');
+      // 에러 발생 시에도 안전하게 저장 팝업 시도
+      handleDownloadImage();
     } finally {
       setIsSaving(false);
       setIsShareModalOpen(false);
@@ -336,7 +349,6 @@ const MusicTaste = () => {
       {step === 0 && (
         <div className="text-center space-y-6 animate-fade-in max-w-2xl relative">
           
-          {/* [수정] 아이콘: 1/2 크기 축소 (w-14 h-14) */}
           <div className="inline-block p-4 rounded-full bg-gray-800 border border-gray-700 mb-6 shadow-xl relative overflow-visible">
              <div className="relative w-14 h-14 flex items-center justify-center filter drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
                <span className="text-[3.5rem] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-90 select-none">🍽️</span>
@@ -446,13 +458,13 @@ const MusicTaste = () => {
               <div className="h-5 w-28 bg-[url('https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/UPC-A-036000291452.svg/1200px-UPC-A-036000291452.svg.png')] bg-cover"></div>
             </div>
 
-            {/* Footer: 심볼 + 로고 이미지 */}
+            {/* Footer: 심볼 + 로고 이미지 (unoptimized 속성 추가됨) */}
             <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex items-center justify-center gap-3 opacity-90">
                 <div className="relative w-6 h-6"> 
-                    <Image src="/logo_symbol.png" alt="Symbol" fill className="object-contain" />
+                    <Image src="/logo_symbol.png" alt="Symbol" fill className="object-contain" unoptimized />
                 </div>
                 <div className="relative w-20 h-5"> 
-                    <Image src="/logo_text.png" alt="Logo Type" fill className="object-contain" />
+                    <Image src="/logo_text.png" alt="Logo Type" fill className="object-contain" unoptimized />
                 </div>
             </div>
             
@@ -482,7 +494,7 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* [수정] 공유 모달: 링크복사 & 인스타스토리 (2가지 옵션) */}
+      {/* 공유 모달 */}
       {isShareModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsShareModalOpen(false)}>
           <div className="w-full max-w-sm bg-white rounded-t-2xl p-6 pb-10 space-y-6 transform transition-transform duration-300 ease-out" onClick={e => e.stopPropagation()}>
