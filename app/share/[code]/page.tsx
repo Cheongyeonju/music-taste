@@ -34,7 +34,7 @@ export async function generateMetadata(
 
   // 배포된 도메인 주소 (없으면 로컬호스트)
   // Vercel 배포 후에는 실제 도메인(https://...)으로 자동 인식되거나 교체해야 합니다.
-  const baseUrl = process.env.NEXT_PUBLIC_URL || 'music-taste-unlisted.vercel.app';
+  const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://music-taste-unlisted.vercel.app';
 
   if (!data) {
     return {
