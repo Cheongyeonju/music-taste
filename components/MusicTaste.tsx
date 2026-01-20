@@ -5,10 +5,23 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Script from 'next/script';
 import html2canvas from 'html2canvas';
-// [중요] 데이터는 이제 constants 파일에서 가져옵니다.
 import { RECIPES, RECIPES_KO, DishCode, ChefInfo } from '@/constants/dishData';
 
-const QUESTIONS_EN = [
+// [타입 정의 추가] TypeScript 에러 방지
+interface Option {
+  text: string;
+  subtext: string;
+  value: string;
+  icon: string;
+}
+
+interface Question {
+  category: string;
+  query: string;
+  options: Option[];
+}
+
+const QUESTIONS_EN: Question[] = [
   {
     category: 'BASE',
     query: 'What determines the first impression of the music?',
@@ -51,7 +64,7 @@ const QUESTIONS_EN = [
   }
 ];
 
-const QUESTIONS_KO = [
+const QUESTIONS_KO: Question[] = [
   {
     category: '베이스 (BASE)',
     query: '음악의 첫인상을 결정하는 재료는 무엇인가요?',
@@ -175,6 +188,7 @@ const MusicTaste = () => {
   useEffect(() => {
     if (typeof window !== 'undefined' && window.Kakao) {
       if (!window.Kakao.isInitialized()) {
+        // [중요] 실제 카카오 JS 키를 여기에 넣으세요
         window.Kakao.init('YOUR_KAKAO_JS_KEY'); 
       }
     }
@@ -225,33 +239,35 @@ const MusicTaste = () => {
   
   const finalResultData = getResultText();
 
-  // [수정] 이미지 저장 함수 (CORS 무시, 모바일 팝업 강제)
+  // [수정] 이미지 저장 함수 (안정성 강화)
   const handleDownloadImage = async () => {
-    if (!ticketRef.current) return;
+    if (!ticketRef.current || isSaving) return;
     setIsSaving(true);
     
     try {
+      // 1. 캔버스 생성
       const canvas = await html2canvas(ticketRef.current, { 
-        backgroundColor: '#ffffff', 
-        scale: 2, 
-        useCORS: true, 
-        allowTaint: true,
-        logging: true,
+        backgroundColor: '#ffffff', // 배경색 지정 (투명 방지)
+        scale: 2, // 고해상도
+        useCORS: true, // 외부 이미지(Next.js 이미지 포함) 허용
+        logging: false, // 디버그 로그 끄기
+        // allowTaint: true, // <-- [제거] 이 옵션은 toDataURL 에러를 유발하므로 뺍니다.
       });
       
       const imageUrl = canvas.toDataURL('image/png');
+      const fileName = `MusicTasty_${finalResultData.name.replace(/\s+/g, '_')}.png`;
 
-      // 모바일 체크
+      // 2. 기기별 처리
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
       if (isMobile) {
-        // 모바일은 팝업을 띄워 길게 눌러 저장 유도
+        // 모바일: 팝업 띄워서 길게 눌러 저장 유도
         setSavedImageUrl(imageUrl);
       } else {
-        // PC는 바로 다운로드 트리거
+        // PC: 바로 다운로드
         const link = document.createElement('a');
         link.href = imageUrl;
-        link.download = 'music_tasty_result.png';
+        link.download = fileName;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -259,16 +275,16 @@ const MusicTaste = () => {
       
     } catch (err) {
       console.error('이미지 생성 실패:', err);
-      alert('이미지 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      alert('이미지 저장 중 오류가 발생했습니다.');
     } finally {
       setIsSaving(false);
+      // 공유 모달에서 눌렀을 경우 닫기
       setIsShareModalOpen(false);
     }
   };
 
   const handleCopyLink = async () => {
     try {
-      // /share/[code] 경로를 사용하여 공유 페이지로 유도
       const url = `${window.location.origin}/share/${resultCode}`;
       await navigator.clipboard.writeText(url);
       alert(lang === 'en' ? 'Link Copied!' : '링크가 복사되었습니다!');
@@ -278,24 +294,25 @@ const MusicTaste = () => {
     }
   };
 
-  // [수정] 인스타그램 공유 함수 (Web Share API + 폴백)
+  // [수정] 인스타그램 공유 함수 (Web Share API 중심)
   const handleInstagramShare = async () => {
-    if (!ticketRef.current) return;
+    if (!ticketRef.current || isSaving) return;
     setIsSaving(true);
+    
     try {
       const canvas = await html2canvas(ticketRef.current, { 
         backgroundColor: '#ffffff', 
         scale: 2, 
         useCORS: true, 
-        allowTaint: true
       });
       
       const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
       if (!blob) throw new Error('Blob 생성 실패');
 
-      const file = new File([blob], 'music_tasty_result.png', { type: 'image/png' });
+      const fileName = `MusicTasty_${finalResultData.name.replace(/\s+/g, '_')}.png`;
+      const file = new File([blob], fileName, { type: 'image/png' });
 
-      // 모바일 공유하기 지원 시
+      // Web Share API 지원 여부 확인 (모바일)
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
@@ -303,15 +320,15 @@ const MusicTaste = () => {
           text: '나의 음악 취향 결과입니다! #MusicTasty',
         });
       } else {
-        // PC나 미지원 브라우저: 다운로드 로직으로 폴백
+        // PC 혹은 미지원 브라우저: 다운로드 후 안내
         const imageUrl = canvas.toDataURL('image/png');
         setSavedImageUrl(imageUrl);
-        alert('이미지가 생성되었습니다. 길게 눌러 저장 후 인스타에 올려주세요!');
+        alert('이미지가 생성되었습니다. 길게 눌러 저장 후 인스타그램에 업로드해주세요!');
       }
     } catch (err) {
-      console.error(err);
-      // 에러 발생 시에도 안전하게 저장 팝업 시도
-      handleDownloadImage();
+      console.error('공유 실패:', err);
+      // 공유 API 실패 시 다운로드 로직으로 폴백
+      handleDownloadImage(); 
     } finally {
       setIsSaving(false);
       setIsShareModalOpen(false);
@@ -386,7 +403,8 @@ const MusicTaste = () => {
                     className={`group p-5 border rounded-xl text-left transition-all duration-200 flex items-center justify-between ${isSelected ? 'bg-purple-600 border-purple-500 text-white scale-[1.02] shadow-lg shadow-purple-900/50' : 'bg-[#1A1A1A] border-gray-700 hover:border-purple-500 hover:bg-[#202020]'}`}>
                     <div>
                       <span className={`text-lg font-bold break-keep ${isSelected ? 'text-white' : 'group-hover:text-purple-300'}`}>
-                          <span className="mr-2">{(opt as any).icon}</span>{opt.text}
+                          {/* 타입 안전하게 수정됨 */}
+                          <span className="mr-2">{opt.icon}</span>{opt.text}
                       </span>
                       <div className={`text-sm mt-1 break-keep leading-relaxed ${isSelected ? 'text-purple-200' : 'text-gray-400'}`}>{opt.subtext}</div>
                     </div>
@@ -458,7 +476,7 @@ const MusicTaste = () => {
               <div className="h-5 w-28 bg-[url('https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/UPC-A-036000291452.svg/1200px-UPC-A-036000291452.svg.png')] bg-cover"></div>
             </div>
 
-            {/* Footer: 심볼 + 로고 이미지 (unoptimized 속성 추가됨) */}
+            {/* Footer */}
             <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex items-center justify-center gap-3 opacity-90">
                 <div className="relative w-6 h-6"> 
                     <Image src="/logo_symbol.png" alt="Symbol" fill className="object-contain" unoptimized />
@@ -484,7 +502,7 @@ const MusicTaste = () => {
                     <span className="text-lg">🏠</span> {t.homeBtn}
                 </button>
                 <button onClick={handleDownloadImage} disabled={isSaving} className="py-3 bg-gray-800 border border-gray-600 text-white rounded-lg font-bold hover:bg-gray-700 transition text-xs flex flex-col items-center justify-center gap-1">
-                    <span className="text-lg">{isSaving ? '...' : '💾'}</span> {t.saveBtn}
+                    <span className="text-lg">{isSaving ? '⏳' : '💾'}</span> {isSaving ? '저장중...' : t.saveBtn}
                 </button>
                 <button onClick={() => setIsShareModalOpen(true)} className="py-3 bg-white text-black rounded-lg font-bold text-xs hover:bg-gray-200 transition flex flex-col items-center justify-center gap-1">
                     <span className="text-lg">🔗</span> {t.shareBtn}
@@ -513,7 +531,7 @@ const MusicTaste = () => {
 
               <button onClick={handleInstagramShare} disabled={isSaving} className="flex flex-col items-center gap-3 group p-2 rounded-xl hover:bg-gray-50 transition">
                 <div className="w-14 h-14 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform text-white">
-                  <span className="text-2xl">📸</span>
+                  <span className="text-2xl">{isSaving ? '⏳' : '📸'}</span>
                 </div>
                 <span className="text-xs text-gray-600 font-bold">인스타 스토리</span>
               </button>
