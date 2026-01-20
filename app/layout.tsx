@@ -5,7 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  // 1. 배포된 실제 도메인 주소 (이게 있어야 이미지 경로가 자동으로 완성됩니다)
+  // ★ 1. 배포된 실제 도메인 주소 (매우 중요!)
+  // 이 설정이 있어야 이미지 경로(/main-thumb.png)가 자동으로 https://.../main-thumb.png 로 변환됩니다.
   metadataBase: new URL('https://music-taste-unlisted.vercel.app'),
 
   title: "Music Tasty | 당신의 음악은 무슨 맛인가요?",
@@ -18,10 +19,11 @@ export const metadata: Metadata = {
     siteName: "Music Tasty",
     locale: 'ko_KR',
     type: "website",
-    // 2. 썸네일 이미지 설정 (public 폴더 기준)
+    
+    // ★ 2. 썸네일 이미지 설정 (public 폴더 기준)
     images: [
       {
-        url: "/main-thumb.png", // ★ public 폴더에 있는 파일명과 정확히 일치해야 함!
+        url: "/main-thumb.png", // public 폴더에 이 파일이 꼭 있어야 합니다.
         width: 1200,
         height: 630,
         alt: "Music Tasty Main Thumbnail",
