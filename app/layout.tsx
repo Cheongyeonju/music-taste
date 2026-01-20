@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Music Tasty : 내 음악 취향 분석",
     description: "당신의 음악은 무슨 맛인가요? 지금 확인해보세요.",
-    url: "music-taste-2026-01.vercel.app", 
+    url: "music-taste-unlisted.vercel.app", 
     siteName: "Music Tasty",
     images: [
       {
