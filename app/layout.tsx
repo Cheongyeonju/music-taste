@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     // ★ 2. 썸네일 이미지 설정 (public 폴더 기준)
     images: [
       {
-        url: "/main-thumb.png", // public 폴더에 이 파일이 꼭 있어야 합니다.
+        url: "https://music-taste-unlisted.vercel.app/main-thumb.png", 
         width: 1200,
         height: 630,
         alt: "Music Tasty Main Thumbnail",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: "Music Tasty : 내 음악 취향 분석",
     description: "당신의 음악은 무슨 맛인가요? 지금 확인해보세요.",
-    images: ["/main-thumb.png"],
+    images: ["https://music-taste-unlisted.vercel.app/main-thumb.png"],
   },
 };
 
