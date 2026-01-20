@@ -2,7 +2,7 @@ import React from 'react';
 import type { Metadata, ResolvingMetadata } from 'next';
 import { notFound } from 'next/navigation';
 import { RECIPES, RECIPES_KO } from '@/constants/dishData';
-import MusicTaste from '@/components/Music Taste';
+import MusicTaste from '@/components/MusicTaste';
 
 // 1. 데이터 가져오기 (DB 대신 상수 파일 사용)
 const getAssetData = (code: string) => {

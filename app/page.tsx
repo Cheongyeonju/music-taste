@@ -1,30 +1,35 @@
-import MusicOmakase from '@/components/Music Taste';
+import MusicOmakase from '@/components/MusicTaste'; // 컴포넌트 파일명/이름 확인 필요
 import { Metadata, ResolvingMetadata } from "next";
 import { RECIPES } from "@/constants/dishData";
 
-
 type Props = {
-  searchParams: { [key: string]: string | string[] | undefined }
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
-// [핵심] URL의 ?code=... 를 읽어서 동적으로 썸네일을 바꿈
-export async function generateMetadata(
-  { searchParams }: Props,
-  parent: ResolvingMetadata
-): Promise<Metadata> {
-  // 1. URL에서 code 읽기
-  const code = searchParams.code as string;
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  // 1. searchParams를 먼저 await로 풉니다.
+  const resolvedParams = await searchParams;
   
-  // 2. 결과 데이터 찾기 (없으면 기본값)
+  // 2. 값을 꺼냅니다. (아직은 string | string[] 상태)
+  const rawCode = resolvedParams.code;
+
+  // 3. 배열이면 첫 번째 것만, 아니면 그대로 사용해서 '문자열'로 고정합니다.
+  const code = Array.isArray(rawCode) ? rawCode[0] : rawCode;
+
+  // 4. 레시피 데이터 찾기
   const recipe = (code && RECIPES[code]) ? RECIPES[code] : null;
 
-  // 3. 썸네일 주소 만들기
-  // 예: https://site.com/api/og?code=SCOF
-  const ogUrl = new URL('https://music-taste-liard.vercel.app/'); // [주의] 본인 배포 주소로 변경!!
-  if (code) ogUrl.searchParams.set('code', code);
+  // [주의] 본인 배포 주소 확인
+  const ogUrl = new URL('https://music-taste-unlisted.vercel.app/api/og'); 
+  
+  // ★ [수정 1] if문을 여기서 명확하게 닫아줍니다.
+  if (code) {
+      ogUrl.searchParams.set('code', code);
+  }
 
-  // 4. 결과가 있으면 그 결과에 맞는 제목/설명 설정
+  // 5. 결과가 있으면 그 결과에 맞는 제목/설명 설정
   const title = recipe 
-    ? `내 음악 취향은 '${recipe.name}' ${recipe.emoji}`
+    ? `내 음악 취향은 '${recipe.name}' ${recipe.emoji || '🍽️'}`
     : "Music Tasty : 내 음악 취향 분석";
     
   const description = recipe
@@ -45,7 +50,7 @@ export async function generateMetadata(
       description: description,
       images: [ogUrl.toString()],
     }
-  }
+  };
 }
 
 export default function Home() {

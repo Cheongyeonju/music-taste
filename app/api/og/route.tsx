@@ -3,21 +3,16 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
+// 폰트 주소 (구글 공식 gstatic - 가장 빠르고 안정적)
+const fontEndpoint = 'https://fonts.gstatic.com/s/nanumgothic/v23/PN_3Rfi-oW3hYwmKDpxS7F_z-7r5.ttf';
+
 export async function GET(request: NextRequest) {
   try {
-    // 1. 폰트 로드 시도 (실패 시 에러를 잡기 위해 try-catch로 감싸지 않고 여기서 처리)
-    const fontData = await fetch(
-      'https://cdn.jsdelivr.net/gh/google/fonts/ofl/nanumgothic/NanumGothic-Bold.ttf'
-    ).then((res) => {
-      if (!res.ok) throw new Error('Font fetch failed');
-      return res.arrayBuffer();
-    }).catch((e) => {
-      // 폰트 로드 실패 시 콘솔에 로그만 남기고 null 반환
-      console.error('Font Loading Error:', e);
-      return null;
-    });
+    // 1. 폰트 로드 (캐시 적용)
+    const fontData = await fetch(new URL(fontEndpoint, import.meta.url), {
+      cache: 'force-cache',
+    }).then((res) => res.arrayBuffer());
 
-    // 2. 이미지 생성
     return new ImageResponse(
       (
         <div
@@ -29,75 +24,69 @@ export async function GET(request: NextRequest) {
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: '#000000',
-            // 폰트가 있으면 적용, 없으면 시스템 기본 폰트(sans-serif) 사용
-            fontFamily: fontData ? '"NanumGothic"' : 'sans-serif',
+            fontFamily: '"NanumGothic"',
           }}
         >
-          {/* 로고 */}
+          {/* 로고 아이콘 (위치 보정 유지) */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '120px',
-              height: '120px',
+              width: '100px',
+              height: '100px',
               borderRadius: '50%',
               backgroundColor: '#1a1a1a',
-              marginBottom: '40px',
-              fontSize: '60px',
-              // 그림자는 무거울 수 있어 단순화
-              border: '1px solid #333', 
+              marginBottom: '30px',
+              fontSize: '50px',
+              textAlign: 'center',
+              transform: 'translateY(-5px)', 
             }}
           >
             🍽️
           </div>
 
-          <div
-            style={{
-              fontSize: 70,
-              fontWeight: 700,
-              color: 'white',
-              marginBottom: 10,
-              display: 'flex',
-            }}
-          >
+          {/* 상단 텍스트 */}
+          <div style={{ fontSize: 60, fontWeight: 700, color: 'white', marginBottom: 10, display: 'flex' }}>
             WHAT'S YOUR
           </div>
 
+          {/* ★ 하단 텍스트: MUSIC TASTY? ★ */}
           <div
             style={{
               display: 'flex',
-              fontSize: 70,
+              fontSize: 60,
               fontWeight: 700,
+              // [핵심 수정] 부모 컨테이너 자체에 오른쪽 여백을 넉넉히 줍니다.
+              paddingRight: '30px', 
+              // 혹시 모를 잘림 방지를 위해 overflow 속성 명시
+              overflow: 'visible', 
             }}
           >
             <span style={{ color: '#a855f7' }}>MUSIC</span>
-            <span style={{ width: 20 }} />
-            <span style={{ color: '#60a5fa' }}>TASTY?</span>
+            <span style={{ width: 15 }} />
+            {/* span 태그에 있던 paddingRight는 제거했습니다. */}
+            <span style={{ color: '#60a5fa' }}> 
+              TASTY?
+            </span>
           </div>
         </div>
       ),
       {
-        width: 1200,
-        height: 630,
-        // 폰트 데이터가 있을 때만 옵션에 추가
-        fonts: fontData
-          ? [
-              {
-                name: 'NanumGothic',
-                data: fontData,
-                style: 'normal',
-                weight: 700,
-              },
-            ]
-          : undefined,
+        width: 800,
+        height: 420,
+        fonts: [
+          {
+            name: 'NanumGothic',
+            data: fontData,
+            style: 'normal',
+            weight: 700,
+          },
+        ],
       }
     );
   } catch (e: any) {
-    // 3. 진짜 에러가 났을 때 터미널에 상세 내용 출력
-    console.error('OG Image Generation Error:', e);
-    return new Response(`Failed to generate image: ${e.message}`, {
-      status: 500,
-    });
+    console.error(e);
+    return new Response('Failed', { status: 500 });
   }
 }
