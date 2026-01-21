@@ -5,8 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  // ★ 1. 배포된 실제 도메인 주소 (매우 중요!)
-  // 이 설정이 있어야 이미지 경로(/main-thumb.png)가 자동으로 https://.../main-thumb.png 로 변환됩니다.
+  // 1. 배포된 도메인 (정상 설정됨)
   metadataBase: new URL('https://music-taste-unlisted.vercel.app'),
 
   title: "Music Tasty | 당신의 음악은 무슨 맛인가요?",
@@ -20,10 +19,10 @@ export const metadata: Metadata = {
     locale: 'ko_KR',
     type: "website",
     
-    // ★ 2. 썸네일 이미지 설정 (public 폴더 기준)
+    // ★ 2. 경로 수정됨 (public 제거)
     images: [
       {
-        url: "https://music-taste-unlisted.vercel.app/main-thumb.png", 
+        url: "/main-thumb.png",  // <-- 수정됨
         width: 1200,
         height: 630,
         alt: "Music Tasty Main Thumbnail",
@@ -35,7 +34,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: "Music Tasty : 내 음악 취향 분석",
     description: "당신의 음악은 무슨 맛인가요? 지금 확인해보세요.",
-    images: ["https://music-taste-unlisted.vercel.app/main-thumb.png"],
+    images: ["/main-thumb.png"], // <-- 수정됨
   },
 };
 

@@ -244,26 +244,24 @@ const MusicTaste = () => {
   
   const finalResultData = getResultText();
 
-  // [이미지 생성 함수] - HEX 코드 필수 사용
+  // [이미지 생성 함수] - Lab Color 오류 방지 (Pure Inline Styles)
   const generateImageBlob = async (): Promise<Blob | null> => {
     const targetElement = document.getElementById('printable-receipt-area');
     if (!targetElement) return null;
 
     try {
       const canvas = await html2canvas(targetElement, { 
-        backgroundColor: '#f8f8f4', // HEX 코드로 고정
+        backgroundColor: '#f8f8f4', // HEX color 필수
         scale: 3, 
         useCORS: true, 
         logging: false,
         onclone: (clonedDoc) => {
             const clonedElement = clonedDoc.getElementById('printable-receipt-area');
             if (clonedElement) {
-                // 모바일 해상도 너비 고정 (비율 유지 핵심)
                 clonedElement.style.width = '375px'; 
                 clonedElement.style.borderRadius = '16px 16px 0 0'; 
                 clonedElement.style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)';
-                // 자간 미세 조정
-                clonedElement.style.letterSpacing = '-0.02em';
+                clonedElement.style.letterSpacing = '0px'; 
             }
         }
       });
@@ -281,7 +279,13 @@ const MusicTaste = () => {
         await navigator.clipboard.writeText(url);
         alert(lang === 'en' ? 'Link Copied!' : '링크가 복사되었습니다!');
       } else {
-        prompt(lang === 'en' ? 'Copy this link:' : '아래 링크를 복사하세요:', url);
+        const textArea = document.createElement("textarea");
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        alert(lang === 'en' ? 'Link Copied!' : '링크가 복사되었습니다!');
       }
       setIsShareModalOpen(false); 
     } catch (err) {
@@ -306,7 +310,6 @@ const MusicTaste = () => {
       const fileName = `MusicTasty_${finalResultData.name.replace(/\s+/g, '_')}.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
 
-      // 네이티브 공유 시도 (카카오톡 등에서 실패 시 catch로 이동)
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
@@ -318,7 +321,6 @@ const MusicTaste = () => {
       }
     } catch (err) {
       console.log('네이티브 공유 불가 -> 이미지 저장 모달로 전환');
-      // 공유 실패 시 무조건 이미지 팝업 띄움 (가장 확실한 방법)
       if (blob) {
          const imageUrl = URL.createObjectURL(blob);
          setSavedImageUrl(imageUrl);
@@ -331,13 +333,12 @@ const MusicTaste = () => {
     }
   };
 
-  // 구분선: 타이틀 수직 정렬 보정
+  // [구분선 컴포넌트: Inline Style 적용]
   const SectionDivider = ({ title }: { title: string }) => (
-    <div className="flex items-center gap-3 mb-5 mt-2">
-      <div className="flex-1 h-px border-t border-dashed border-[#d1d5db]"></div>
-      {/* pt-[2px]로 시각적 중앙 정렬 보정 */}
-      <span className="shrink-0 text-[10px] font-black text-[#9ca3af] uppercase tracking-widest pt-[2px]">{title}</span>
-      <div className="flex-1 h-px border-t border-dashed border-[#d1d5db]"></div>
+    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', marginTop: '8px' }}>
+      <div style={{ flex: 1, height: '1px', borderTop: '1px dashed #d1d5db' }}></div>
+      <span style={{ flexShrink: 0, fontSize: '10px', fontWeight: 900, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '-2px', paddingLeft: '12px', paddingRight: '12px' }}>{title}</span>
+      <div style={{ flex: 1, height: '1px', borderTop: '1px dashed #d1d5db' }}></div>
     </div>
   );
 
@@ -346,6 +347,7 @@ const MusicTaste = () => {
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 font-sans text-white select-none relative">
       
+      {/* 상단 버튼 */}
       <div className="absolute top-4 right-4 z-50 flex gap-2">
         {step === 99 && (
            <button onClick={() => window.location.href = '/'} className="bg-gray-800/80 backdrop-blur w-8 h-8 flex items-center justify-center rounded-full border border-gray-600 hover:bg-gray-700 transition">
@@ -360,6 +362,7 @@ const MusicTaste = () => {
         </button>
       </div>
 
+      {/* 카카오 인앱 가이드 */}
       {isKakaoInApp && (
         <div className="fixed inset-0 z-[200] bg-black/90 flex flex-col items-end p-6 text-white font-bold animate-fade-in" onClick={() => setIsKakaoInApp(false)}>
             <div className="text-3xl animate-bounce mb-2">↗</div>
@@ -374,6 +377,7 @@ const MusicTaste = () => {
         </div>
       )}
 
+      {/* 인트로 */}
       {step === 0 && (
         <div className="text-center space-y-6 animate-fade-in max-w-2xl relative">
           <div className="inline-block p-4 rounded-full bg-gray-800 border border-gray-700 mb-6 shadow-xl relative overflow-visible">
@@ -392,6 +396,7 @@ const MusicTaste = () => {
         </div>
       )}
 
+      {/* 질문 진행 */}
       {step >= 1 && step <= 4 && (
         <div className="w-full max-w-lg space-y-4 animate-slide-up relative">
           <div className="flex items-center justify-between mb-2">
@@ -424,50 +429,62 @@ const MusicTaste = () => {
         </div>
       )}
 
+      {/* 결과 화면 (영수증) */}
       {step === 99 && (
         <div className="w-full max-w-sm animate-slide-up pb-10 relative z-10">
           
-          <div ref={ticketRef} className="relative font-mono rounded-t-2xl shadow-[0_4px_20px_rgba(0,0,0,0.1)] bg-[#f8f8f4] text-[#1f2937]">
-            
-            {/* ★ 캡처 대상 영역 (ID: printable-receipt-area) ★ */}
-            <div id="printable-receipt-area" className="relative bg-[#f8f8f4] rounded-t-2xl">
-                
-                <div className="p-6 pb-0">
-                    <div className="text-center border-b-2 border-dashed border-[#d1d5db] pb-5 mb-8">
-                        <h2 className="text-xl font-black tracking-tight uppercase">{t.ticketTitle}</h2>
-                        <p className="text-[10px] text-[#6b7280] mt-1">{new Date().toLocaleDateString()}</p>
+          {/* ★ 캡처 대상 영역 (ID: printable-receipt-area) ★ */}
+          {/* Tailwind 사용 X -> Inline Style로 100% 교체하여 Lab 오류 및 정렬 깨짐 방지 */}
+          <div 
+            ref={ticketRef}
+            id="printable-receipt-area" 
+            className="relative rounded-t-2xl font-mono"
+            style={{ 
+                backgroundColor: '#f8f8f4', 
+                color: '#1f2937', 
+                boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                overflow: 'hidden'
+            }}
+          >
+                <div style={{ padding: '24px', paddingBottom: '0' }}>
+                    {/* Header */}
+                    <div style={{ textAlign: 'center', borderBottom: '2px dashed #d1d5db', paddingBottom: '20px', marginBottom: '32px' }}>
+                        <h2 style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.025em', textTransform: 'uppercase', margin: 0, color: '#1f2937' }}>{t.ticketTitle}</h2>
+                        <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px', margin: 0 }}>{new Date().toLocaleDateString()}</p>
                     </div>
 
-                    {/* 음식 이모지 간격 대폭 확보 */}
-                    <div className="text-center mb-10">
-                        <div className="text-7xl mb-6">{emoji}</div>
-                        <h3 className="text-xl font-black uppercase leading-tight mb-3">{finalResultData.name}</h3>
-                        <p className="text-[11px] text-[#4b5563] font-sans leading-relaxed px-1 break-keep">{finalResultData.description}</p>
+                    {/* Main Result */}
+                    <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                        <div style={{ fontSize: '72px', marginBottom: '24px', lineHeight: 1 }}>{emoji}</div>
+                        <h3 style={{ fontSize: '20px', fontWeight: 900, textTransform: 'uppercase', lineHeight: 1.1, marginBottom: '12px', margin: 0, color: '#1f2937' }}>{finalResultData.name}</h3>
+                        <p style={{ fontSize: '11px', color: '#4b5563', fontFamily: 'sans-serif', lineHeight: 1.6, padding: '0 4px', margin: 0, wordBreak: 'keep-all' }}>{finalResultData.description}</p>
                     </div>
 
-                    {/* 분석 그래프 - 레이아웃 겹침 방지 (Flex Table 구조) */}
-                    <div className="mb-10">
+                    {/* Taste Graph */}
+                    <div style={{ marginBottom: '40px' }}>
                         <SectionDivider title={t.analysis} />
-                        <div className="space-y-3">
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
                             {t.metrics.map((metric, idx) => {
                             const values = METRIC_VALUES[idx];
                             const isLeftSelected = answers[idx] === values.leftVal;
                             return (
-                                <div key={idx} className="flex items-center w-full py-1 border-b border-dotted border-[#e5e7eb] last:border-0">
-                                    {/* 왼쪽 라벨: 너비 고정 (겹침 방지) */}
-                                    <span className="w-[70px] shrink-0 font-bold text-[#374151] uppercase tracking-wider text-[10px] text-left">
+                                <div key={idx} style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '6px 0', borderBottom: '1px dotted #e5e7eb' }}>
+                                    {/* Label */}
+                                    <span style={{ width: '80px', flexShrink: 0, fontWeight: 'bold', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px', textAlign: 'left' }}>
                                         {idx + 1}. {metric.label}
                                     </span>
                                     
-                                    {/* 오른쪽 체크박스: 남은 공간 균등 분할 */}
-                                    <div className="flex-1 flex items-center justify-between pl-2">
-                                        <div className={`flex-1 flex items-center gap-1.5 ${isLeftSelected ? 'text-black font-bold' : 'text-[#9ca3af]'}`}>
-                                            <span className="text-[10px] w-3 text-center shrink-0">{isLeftSelected ? '☑' : '☐'}</span>
-                                            <span className="text-[10px] whitespace-nowrap">{metric.left}</span>
+                                    {/* Checkboxes Wrapper */}
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                                        {/* Left Option */}
+                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', color: isLeftSelected ? '#000000' : '#9ca3af', fontWeight: isLeftSelected ? 'bold' : 'normal' }}>
+                                            <span style={{ fontSize: '12px', marginRight: '6px', lineHeight: 1 }}>{isLeftSelected ? '☑' : '☐'}</span>
+                                            <span style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>{metric.left}</span>
                                         </div>
-                                        <div className={`flex-1 flex items-center gap-1.5 ${!isLeftSelected ? 'text-black font-bold' : 'text-[#9ca3af]'}`}>
-                                            <span className="text-[10px] w-3 text-center shrink-0">{!isLeftSelected ? '☑' : '☐'}</span>
-                                            <span className="text-[10px] whitespace-nowrap">{metric.right}</span>
+                                        {/* Right Option */}
+                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', color: !isLeftSelected ? '#000000' : '#9ca3af', fontWeight: !isLeftSelected ? 'bold' : 'normal' }}>
+                                            <span style={{ fontSize: '12px', marginRight: '6px', lineHeight: 1 }}>{!isLeftSelected ? '☑' : '☐'}</span>
+                                            <span style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>{metric.right}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -476,55 +493,71 @@ const MusicTaste = () => {
                         </div>
                     </div>
 
-                    {/* 테이스팅 노트 - 정렬 보정 */}
-                    <div className="mb-10">
+                    {/* Flavor Notes */}
+                    <div style={{ marginBottom: '40px' }}>
                         <SectionDivider title={t.tastingNotes} />
-                        <div className="flex flex-wrap justify-center gap-2 pt-1">
+                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', paddingTop: '4px' }}>
                             {finalResultData.tags.slice(0, 3).map((tag) => ( 
-                            // 높이 지정 및 Flex Center로 텍스트 수직 중앙 정렬
-                            <span key={tag} className="h-6 flex items-center justify-center px-3 rounded border bg-[#faf5ff] border-[#e9d5ff] text-[#7e22ce] text-[10px] font-bold uppercase tracking-wide pt-[1px]">#{tag}</span>
+                            <span key={tag} style={{ 
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '24px', 
+                                padding: '0 12px', borderRadius: '4px', border: '1px solid #e9d5ff', 
+                                backgroundColor: '#faf5ff', color: '#7e22ce', fontSize: '10px', 
+                                fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.025em' 
+                            }}>
+                                #{tag}
+                            </span>
                             ))}
                         </div>
                     </div>
                 
-                    {/* 추천 아티스트 - 뱃지 정렬 및 이름 줄바꿈 처리 */}
-                    <div className="mb-6">
+                    {/* Similar Artists */}
+                    <div style={{ marginBottom: '24px' }}>
                         <SectionDivider title={t.headChefs} />
-                        <div className="flex justify-center gap-5 pt-3">
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', paddingTop: '12px' }}>
                             {chefs && chefs.map((chef, idx) => (
-                            <div key={idx} className="flex flex-col items-center gap-2 w-[72px]">
-                                <div className="relative">
-                                    <div className="w-12 h-12 rounded-full bg-[#f3f4f6] flex items-center justify-center text-2xl shadow-sm border border-[#e5e7eb] text-[#374151]">👨‍🍳</div>
-                                    {/* 뱃지: absolute 정위치 및 내부 텍스트 정렬 */}
-                                    <div className={`absolute -bottom-1 -right-1 w-6 h-3.5 flex items-center justify-center rounded text-white border border-white ${chef.region === 'KR' ? 'bg-black' : 'bg-[#6b7280]'}`}>
-                                        <span className="text-[7px] font-bold pt-[1px]">{chef.region}</span>
+                            <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '72px' }}>
+                                <div style={{ position: 'relative', marginBottom: '8px' }}>
+                                    <div style={{ 
+                                        width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#f3f4f6', 
+                                        border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                                        fontSize: '24px', color: '#374151' 
+                                    }}>👨‍🍳</div>
+                                    <div style={{ 
+                                        position: 'absolute', bottom: '-4px', right: '-4px', width: '24px', height: '14px', 
+                                        backgroundColor: chef.region === 'KR' ? '#000000' : '#6b7280', 
+                                        borderRadius: '4px', border: '1px solid #ffffff', display: 'flex', 
+                                        alignItems: 'center', justifyContent: 'center' 
+                                    }}>
+                                        <span style={{ fontSize: '7px', fontWeight: 'bold', color: '#ffffff', lineHeight: 1 }}>{chef.region}</span>
                                     </div>
                                 </div>
-                                {/* 이름 영역: 너비 확보 및 중앙 정렬 */}
-                                <div className="w-full flex items-start justify-center text-center">
-                                    <span className="text-[10px] font-bold text-[#1f2937] leading-tight break-keep">{chef.name}</span>
+                                <div style={{ width: '100%', display: 'flex', justifyContent: 'center', textAlign: 'center' }}>
+                                    <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#1f2937', lineHeight: 1.1, wordBreak: 'keep-all' }}>{chef.name}</span>
                                 </div>
                             </div>
                             ))}
                         </div>
                     </div>
                     
-                    <div className="mt-6 pt-5 border-t-2 border-dashed border-[#d1d5db] flex items-center justify-center gap-3 pb-8">
-                        <div className="w-7 h-7 flex items-center justify-center"> 
-                            <img src="/logo_symbol.png" alt="Symbol" className="w-full h-full object-contain" />
+                    {/* Footer Logo */}
+                    <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '2px dashed #d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', paddingBottom: '32px', opacity: 0.8 }}>
+                        <div style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}> 
+                            <img src="/logo_symbol.png" alt="Symbol" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         </div>
-                        <div className="w-24 h-6 flex items-center justify-center"> 
-                            <img src="/logo_text.png" alt="Logo Type" className="w-full h-full object-contain" />
+                        <div style={{ width: '70px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}> 
+                            <img src="/logo_text.png" alt="Logo Type" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         </div>
                     </div>
                 </div>
 
-                <div className="absolute bottom-[-10px] left-0 w-full h-[10px] bg-[#f8f8f4]" style={{ clipPath: 'polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)'}}></div>
-            </div>
-            {/* 캡처 대상 영역 끝 */}
-            
+                {/* Jagged Edge */}
+                <div style={{ 
+                    position: 'absolute', bottom: '-10px', left: 0, width: '100%', height: '10px', backgroundColor: '#f8f8f4',
+                    clipPath: 'polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)' 
+                }}></div>
           </div>
 
+          {/* 하단 버튼 */}
           <div className="mt-8 flex flex-col gap-3 px-1 relative z-20">
             <button 
                 onClick={() => router.push('/radio')} 
@@ -540,6 +573,7 @@ const MusicTaste = () => {
         </div>
       )}
 
+      {/* 공유 모달 */}
       {isShareModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsShareModalOpen(false)}>
           <div className="w-full max-w-sm bg-[#252525] rounded-t-2xl overflow-hidden transform transition-transform duration-300 ease-out pb-4" onClick={e => e.stopPropagation()}>
@@ -569,6 +603,7 @@ const MusicTaste = () => {
         </div>
       )}
 
+      {/* 저장 모달 */}
       {savedImageUrl && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSavedImageUrl(null)}>
           <div className="max-w-sm w-full bg-white rounded-xl p-6 flex flex-col items-center space-y-6" onClick={e => e.stopPropagation()}>
