@@ -488,10 +488,11 @@ const MusicTaste = () => {
                 {/* Footer */}
                 <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex items-center justify-center gap-3 opacity-90">
                     <div className="relative w-6 h-6"> 
-                        <Image src="/logo_symbol.png" alt="Symbol" fill className="object-contain" unoptimized />
+                        <img src="/logo_symbol.png" alt="Symbol" fill className="object-contain" unoptimized />
                     </div>
                     <div className="relative w-20 h-5"> 
-                        <Image src="/logo_text.png" alt="Logo Type" fill className="object-contain" unoptimized />
+                        <img
+                         src="/logo_text.png" alt="Logo Type" fill className="object-contain" unoptimized />
                     </div>
                 </div>
             </div>
