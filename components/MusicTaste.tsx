@@ -170,7 +170,7 @@ const MusicTaste = () => {
   const [lang, setLang] = useState<'en' | 'ko'>('en'); 
   const [step, setStep] = useState(0); 
   const [answers, setAnswers] = useState<DishCode[]>([]);
-  const [resultCode, setResultCode] = useState<string>('default');
+  const [resultCode, setResultCode] = useState<string>('BCOF');
   const [chefs, setChefs] = useState<ChefInfo[]>([]);
   const [emoji, setEmoji] = useState<string>('🍽️');
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -468,14 +468,14 @@ const MusicTaste = () => {
                             const values = METRIC_VALUES[idx];
                             const isLeftSelected = answers[idx] === values.leftVal;
                             return (
-                                <div key={idx} style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '6px 0', borderBottom: '1px dotted #e5e7eb' }}>
+                                <div key={idx} style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '6px 0', borderBottom: '1px dotted #e5e7eb',   }}>
                                     {/* Label */}
-                                    <span style={{ width: '80px', flexShrink: 0, fontWeight: 'bold', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px', textAlign: 'left' }}>
+                                    <span style={{ width: '80px', flexShrink: 0, fontWeight: 'bold', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px', textAlign: 'left', paddingLeft: '8px' }}>
                                         {idx + 1}. {metric.label}
                                     </span>
                                     
                                     {/* Checkboxes Wrapper */}
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '100px' }}>
                                         {/* Left Option */}
                                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', color: isLeftSelected ? '#000000' : '#9ca3af', fontWeight: isLeftSelected ? 'bold' : 'normal' }}>
                                             <span style={{ fontSize: '12px', marginRight: '6px', lineHeight: 1 }}>{isLeftSelected ? '☑' : '☐'}</span>
@@ -513,7 +513,7 @@ const MusicTaste = () => {
                     {/* Similar Artists */}
                     <div style={{ marginBottom: '24px' }}>
                         <SectionDivider title={t.headChefs} />
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', paddingTop: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', paddingTop: '0px' }}>
                             {chefs && chefs.map((chef, idx) => (
                             <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '72px' }}>
                                 <div style={{ position: 'relative', marginBottom: '8px' }}>
