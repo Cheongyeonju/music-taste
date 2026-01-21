@@ -232,14 +232,16 @@ const MusicTaste = () => {
     
     try {
       const canvas = await html2canvas(targetElement, { 
-        backgroundColor: '#ffffff', 
+        backgroundColor: '#f8f8f4', // 영수증 배경색과 동일하게 설정
         scale: 2, 
         useCORS: true, 
         logging: false,
         onclone: (clonedDoc) => {
             const clonedElement = clonedDoc.getElementById('printable-receipt-area');
             if (clonedElement) {
-                clonedElement.style.borderRadius = '12px 12px 0 0'; 
+                // 캡처 시에도 둥근 모서리와 그림자 유지
+                clonedElement.style.borderRadius = '16px 16px 0 0'; 
+                clonedElement.style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)';
             }
         }
       });
@@ -292,14 +294,15 @@ const MusicTaste = () => {
       await navigator.clipboard.writeText(url).catch(() => {}); 
 
       const canvas = await html2canvas(targetElement, { 
-        backgroundColor: '#ffffff', 
+        backgroundColor: '#f8f8f4', // 영수증 배경색
         scale: 2, 
         useCORS: true, 
         logging: false,
         onclone: (clonedDoc) => {
             const clonedElement = clonedDoc.getElementById('printable-receipt-area');
             if (clonedElement) {
-                clonedElement.style.borderRadius = '12px 12px 0 0';
+                clonedElement.style.borderRadius = '16px 16px 0 0';
+                clonedElement.style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)';
             }
         }
       });
@@ -335,11 +338,12 @@ const MusicTaste = () => {
     }
   };
 
+  // 구분선 컴포넌트 (마진 조정)
   const SectionDivider = ({ title }: { title: string }) => (
-    <div className="flex items-center gap-2 mb-3 mt-1">
-      <div className="flex-1 h-px border-t border-dashed border-[#d1d5db]"></div> {/* gray-300 -> HEX */}
-      <span className="shrink-0 text-[10px] font-black text-[#9ca3af] uppercase tracking-widest">{title}</span> {/* gray-400 -> HEX */}
-      <div className="flex-1 h-px border-t border-dashed border-[#d1d5db]"></div> {/* gray-300 -> HEX */}
+    <div className="flex items-center gap-3 mb-6 mt-2">
+      <div className="flex-1 h-px border-t border-dashed border-[#d1d5db]"></div>
+      <span className="shrink-0 text-xs font-black text-[#9ca3af] uppercase tracking-widest">{title}</span>
+      <div className="flex-1 h-px border-t border-dashed border-[#d1d5db]"></div>
     </div>
   );
 
@@ -348,6 +352,7 @@ const MusicTaste = () => {
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 font-sans text-white select-none relative">
       
+      {/* 언어 변경 버튼 (생략) */}
       <div className="absolute top-4 right-4 z-50">
         <button 
           onClick={() => setLang(prev => prev === 'en' ? 'ko' : 'en')}
@@ -357,16 +362,15 @@ const MusicTaste = () => {
         </button>
       </div>
 
+      {/* 인트로 및 질문 단계 (생략 - 기존과 동일) */}
       {step === 0 && (
         <div className="text-center space-y-6 animate-fade-in max-w-2xl relative">
-          
           <div className="inline-block p-4 rounded-full bg-gray-800 border border-gray-700 mb-6 shadow-xl relative overflow-visible">
              <div className="relative w-14 h-14 flex items-center justify-center filter drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
                <span className="text-[3.5rem] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-90 select-none">🍽️</span>
                <span className="text-[1.5rem] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 select-none drop-shadow-lg mt-1">🎵</span>
              </div>
           </div>
-
           <h1 className="text-4xl md:text-5xl font-black tracking-tighter uppercase leading-tight">
             {t.introTitle}
           </h1>
@@ -409,121 +413,123 @@ const MusicTaste = () => {
         </div>
       )}
 
+      {/* 결과 화면 (영수증) */}
       {step === 99 && (
-        <div className="w-full max-w-sm animate-slide-up pb-10">
+        <div className="w-full max-w-md animate-slide-up pb-10">
           
-          <div ref={ticketRef} className="bg-white text-black relative font-mono pb-8 rounded-t-xl shadow-2xl">
+          {/* 영수증 컨테이너 (그림자 및 배경색 적용) */}
+          <div ref={ticketRef} className="relative font-mono pb-8 rounded-t-2xl shadow-[0_4px_20px_rgba(0,0,0,0.1)] bg-[#f8f8f4] text-[#1f2937]">
             
-            {/* ★ 캡처 대상 영역 (Tailwind 변수 사용 금지: HEX 코드로 강제 고정) ★ */}
-            <div id="printable-receipt-area" className="p-5 bg-white rounded-t-xl">
-                <div className="text-center border-b-2 border-dashed border-[#d1d5db] pb-3 mb-4"> {/* border-gray-300 -> #d1d5db */}
-                    <h2 className="text-xl font-black tracking-tighter uppercase">{t.ticketTitle}</h2>
-                    <p className="text-[10px] text-[#4b5563] mt-0.5">{new Date().toLocaleDateString()}</p> {/* text-gray-600 -> #4b5563 */}
+            {/* ★ 캡처 대상 영역 ★ */}
+            <div id="printable-receipt-area" className="p-8 rounded-t-2xl bg-[#f8f8f4]">
+                {/* 영수증 헤더 */}
+                <div className="text-center border-b-2 border-dashed border-[#d1d5db] pb-6 mb-8">
+                    <h2 className="text-3xl font-black tracking-tight uppercase">{t.ticketTitle}</h2>
+                    <p className="text-sm text-[#6b7280] mt-2">{new Date().toLocaleDateString()}</p>
                 </div>
-                <div className="text-center mb-6">
-                    <div className="text-5xl mb-2">{emoji}</div>
-                    <h3 className="text-lg font-black uppercase leading-tight mb-1">{finalResultData.name}</h3>
-                    <p className="text-[10px] text-[#374151] font-sans leading-relaxed px-1 break-keep">{finalResultData.description}</p> {/* text-gray-700 -> #374151 */}
+
+                {/* 결과 메인 */}
+                <div className="text-center mb-10">
+                    <div className="text-7xl mb-4">{emoji}</div>
+                    <h3 className="text-2xl font-black uppercase leading-tight mb-3">{finalResultData.name}</h3>
+                    <p className="text-sm text-[#4b5563] font-sans leading-relaxed px-2 break-keep">{finalResultData.description}</p>
                 </div>
-                <div className="mb-6">
+
+                {/* 분석 그래프 (겹침 해결 및 간격 조정) */}
+                <div className="mb-10">
                     <SectionDivider title={t.analysis} />
-                    <div className="space-y-2">
+                    <div className="space-y-4"> {/* 항목 간격 늘림 */}
                         {t.metrics.map((metric, idx) => {
                         const values = METRIC_VALUES[idx];
                         const isLeftSelected = answers[idx] === values.leftVal;
                         return (
-                            <div key={idx} className="flex items-center justify-between text-[9px] h-5 border-b border-dotted border-[#e5e7eb] last:border-0"> {/* border-gray-200 -> #e5e7eb */}
-                            <span className="font-bold text-[#4b5563] uppercase tracking-wider w-20 shrink-0 whitespace-nowrap text-left">{idx + 1}. {metric.label}</span> {/* text-gray-600 -> #4b5563 */}
-                            <div className="w-48 grid grid-cols-2 gap-1"> 
-                                <div className={`flex items-center gap-1.5 ${isLeftSelected ? 'text-black font-bold' : 'text-[#9ca3af]'}`}> {/* text-gray-400 -> #9ca3af */}
-                                <span className="text-[10px] w-3 text-center shrink-0">{isLeftSelected ? '☑' : '☐'}</span><span className="truncate">{metric.left}</span>
+                            <div key={idx} className="flex items-center justify-between py-2 border-b border-dotted border-[#e5e7eb] last:border-0">
+                                <span className="font-bold text-[#374151] uppercase tracking-wider w-24 shrink-0 whitespace-nowrap text-left text-xs">{idx + 1}. {metric.label}</span>
+                                <div className="w-full grid grid-cols-2 gap-6 ml-4"> {/* 그리드 간격 늘림 */}
+                                    <div className={`flex items-center gap-3 ${isLeftSelected ? 'text-black font-bold' : 'text-[#9ca3af]'}`}>
+                                        <span className="text-sm w-4 text-center shrink-0">{isLeftSelected ? '☑' : '☐'}</span>
+                                        <span className="truncate text-sm">{metric.left}</span>
+                                    </div>
+                                    <div className={`flex items-center gap-3 ${!isLeftSelected ? 'text-black font-bold' : 'text-[#9ca3af]'}`}>
+                                        <span className="text-sm w-4 text-center shrink-0">{!isLeftSelected ? '☑' : '☐'}</span>
+                                        <span className="truncate text-sm">{metric.right}</span>
+                                    </div>
                                 </div>
-                                <div className={`flex items-center gap-1.5 ${!isLeftSelected ? 'text-black font-bold' : 'text-[#9ca3af]'}`}>
-                                <span className="text-[10px] w-3 text-center shrink-0">{!isLeftSelected ? '☑' : '☐'}</span><span className="truncate">{metric.right}</span>
-                                </div>
-                            </div>
                             </div>
                         );
                         })}
                     </div>
                 </div>
-                <div className="mb-6">
+
+                {/* 테이스팅 노트 */}
+                <div className="mb-8">
                     <SectionDivider title={t.tastingNotes} />
-                    <div className="flex flex-wrap justify-center gap-1.5 pt-1">
+                    <div className="flex flex-wrap justify-center gap-2 pt-2">
                         {finalResultData.tags.slice(0, 3).map((tag) => ( 
-                        <span key={tag} className="px-2 py-0.5 rounded border bg-[#faf5ff] border-[#e9d5ff] text-[#7e22ce] text-[10px] font-bold uppercase tracking-wide">#{tag}</span>
-                        /* bg-purple-50  -> #faf5ff
-                           border-purple-200 -> #e9d5ff
-                           text-purple-700 -> #7e22ce 
-                        */
+                        <span key={tag} className="px-3 py-1 rounded-full border bg-[#faf5ff] border-[#e9d5ff] text-[#7e22ce] text-xs font-bold uppercase tracking-wide">#{tag}</span>
                         ))}
                     </div>
                 </div>
             </div>
-            
+            {/* 캡처 대상 영역 끝 */}
+
             {/* 캡처 제외 영역 */}
-            <div className="px-5">
-                <div className="mb-0.5">
+            <div className="px-8">
+                <div className="mb-2">
                     <SectionDivider title={t.headChefs} />
-                    <div className="flex justify-center gap-4 pt-1">
+                    <div className="flex justify-center gap-6 pt-2">
                         {chefs && chefs.map((chef, idx) => (
-                        <div key={idx} className="flex flex-col items-center gap-1 w-20">
+                        <div key={idx} className="flex flex-col items-center gap-2 w-24">
                             <div className="relative">
-                            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl shadow-sm border border-gray-200 text-gray-700">👨‍🍳</div>
-                            <span className={`absolute -bottom-1 -right-1 text-[7px] font-bold px-1 py-px rounded text-white border border-white ${chef.region === 'KR' ? 'bg-black' : 'bg-gray-500'}`}>{chef.region}</span>
+                            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl shadow-sm border border-gray-200 text-gray-700">👨‍🍳</div>
+                            <span className={`absolute -bottom-1 -right-1 text-[8px] font-bold px-1.5 py-0.5 rounded text-white border border-white ${chef.region === 'KR' ? 'bg-black' : 'bg-gray-500'}`}>{chef.region}</span>
                             </div>
-                            <span className="text-[11px] font-bold text-gray-800 text-center leading-tight break-words w-full truncate">{chef.name}</span>
+                            <span className="text-xs font-bold text-gray-800 text-center leading-tight break-words w-full">{chef.name}</span>
                         </div>
                         ))}
                     </div>
                 </div>
                 
-                {/* [수정 완료] Footer: fill/unoptimized 제거 후 표준 img 태그 사용 */}
-                <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex items-center justify-center gap-3 opacity-90">
-                    <div className="w-6 h-6 flex items-center justify-center"> 
-                        <img 
-                          src="/logo_symbol.png" 
-                          alt="Symbol" 
-                          className="w-full h-full object-contain" 
-                        />
+                {/* Footer */}
+                <div className="mt-6 pt-4 border-t-2 border-dashed border-gray-300 flex items-center justify-center gap-4 opacity-80">
+                    <div className="w-7 h-7 flex items-center justify-center"> 
+                        <img src="/logo_symbol.png" alt="Symbol" className="w-full h-full object-contain" />
                     </div>
-                    <div className="w-20 h-5 flex items-center justify-center"> 
-                        <img 
-                          src="/logo_text.png" 
-                          alt="Logo Type" 
-                          className="w-full h-full object-contain" 
-                        />
+                    <div className="w-24 h-6 flex items-center justify-center"> 
+                        <img src="/logo_text.png" alt="Logo Type" className="w-full h-full object-contain" />
                     </div>
                 </div>
             </div>
             
-             <div className="absolute bottom-[-10px] left-0 w-full h-[10px] bg-white" style={{ clipPath: 'polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)'}}></div>
+             {/* 영수증 하단 찢어진 효과 (배경색 변경) */}
+             <div className="absolute bottom-[-12px] left-0 w-full h-[12px] bg-[#f8f8f4]" style={{ clipPath: 'polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)'}}></div>
           </div>
 
-          <div className="mt-6 flex flex-col gap-2 px-1">
+          {/* 하단 버튼 그룹 */}
+          <div className="mt-8 flex flex-col gap-3 px-2">
             <button 
                 onClick={() => router.push('/radio')} 
-                className="w-full py-4 bg-neon-gradient text-white rounded-xl font-bold text-base shadow-lg shadow-purple-900/40 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
+                className="w-full py-4 bg-neon-gradient text-white rounded-xl font-bold text-lg shadow-lg shadow-purple-900/30 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
             >
-                <span className="text-xl">🎧</span> {t.playBtn}
+                <span className="text-2xl">🎧</span> {t.playBtn}
             </button>
 
-            <div className="grid grid-cols-3 gap-2">
-                <button onClick={() => window.location.href = '/'} className="py-3 bg-[#1A1A1A] border border-gray-700 text-gray-300 rounded-lg font-bold hover:bg-[#252525] hover:text-white transition text-xs flex flex-col items-center justify-center gap-1">
-                    <span className="text-lg">🏠</span> {t.homeBtn}
+            <div className="grid grid-cols-3 gap-3">
+                <button onClick={() => window.location.href = '/'} className="py-3.5 bg-[#1A1A1A] border border-gray-700 text-gray-300 rounded-xl font-bold hover:bg-[#252525] hover:text-white transition text-sm flex flex-col items-center justify-center gap-1.5">
+                    <span className="text-xl">🏠</span> {t.homeBtn}
                 </button>
-                <button onClick={handleDownloadImage} disabled={isSaving} className="py-3 bg-gray-800 border border-gray-600 text-white rounded-lg font-bold hover:bg-gray-700 transition text-xs flex flex-col items-center justify-center gap-1">
-                    <span className="text-lg">{isSaving ? '⏳' : '💾'}</span> {isSaving ? '저장중...' : t.saveBtn}
+                <button onClick={handleDownloadImage} disabled={isSaving} className="py-3.5 bg-gray-800 border border-gray-600 text-white rounded-xl font-bold hover:bg-gray-700 transition text-sm flex flex-col items-center justify-center gap-1.5">
+                    <span className="text-xl">{isSaving ? '⏳' : '💾'}</span> {isSaving ? '저장중...' : t.saveBtn}
                 </button>
-                <button onClick={() => setIsShareModalOpen(true)} className="py-3 bg-white text-black rounded-lg font-bold text-xs hover:bg-gray-200 transition flex flex-col items-center justify-center gap-1">
-                    <span className="text-lg">🔗</span> {t.shareBtn}
+                <button onClick={() => setIsShareModalOpen(true)} className="py-3.5 bg-white text-black rounded-xl font-bold text-sm hover:bg-gray-100 transition flex flex-col items-center justify-center gap-1.5">
+                    <span className="text-xl">🔗</span> {t.shareBtn}
                 </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 공유 모달 */}
+      {/* 공유 모달 (생략 - 기존과 동일) */}
       {isShareModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsShareModalOpen(false)}>
           <div className="w-full max-w-sm bg-white rounded-t-2xl p-6 pb-10 space-y-6 transform transition-transform duration-300 ease-out" onClick={e => e.stopPropagation()}>
@@ -561,27 +567,25 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 이미지 저장용 팝업 모달 */}
+      {/* 이미지 저장용 팝업 모달 (생략 - 기존과 동일) */}
       {savedImageUrl && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSavedImageUrl(null)}>
-          <div className="max-w-sm w-full bg-white rounded-xl p-4 flex flex-col items-center space-y-4" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-lg text-black">이미지 저장</h3>
-            <p className="text-sm text-gray-500 text-center">
+          <div className="max-w-sm w-full bg-white rounded-xl p-6 flex flex-col items-center space-y-6" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-xl text-black">이미지 저장</h3>
+            <p className="text-sm text-gray-500 text-center leading-relaxed">
               아래 이미지를 <span className="font-bold text-purple-600">길게 눌러서</span><br/>
-              &apos;사진 앱에 저장&apos;을 선택해주세요.
+              &apos;사진 앱에 저장&apos;을 선택하거나<br/>스크린샷을 찍어주세요.
             </p>
-            <div className="relative w-full aspect-[3/4] shadow-lg rounded-lg overflow-hidden border border-gray-200">
-              <Image 
+            <div className="relative w-full shadow-2xl rounded-2xl overflow-hidden">
+              <img 
                 src={savedImageUrl} 
                 alt="Saved Result" 
-                fill 
-                className="object-contain"
-                unoptimized 
+                className="w-full h-auto object-contain"
               />
             </div>
             <button 
               onClick={() => setSavedImageUrl(null)}
-              className="w-full py-3 bg-gray-900 text-white rounded-lg font-bold hover:bg-gray-800 transition"
+              className="w-full py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition"
             >
               닫기
             </button>
