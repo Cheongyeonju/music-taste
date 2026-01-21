@@ -239,7 +239,6 @@ const MusicTaste = () => {
         onclone: (clonedDoc) => {
             const clonedElement = clonedDoc.getElementById('printable-receipt-area');
             if (clonedElement) {
-                // 저장되는 이미지의 상단 모서리를 둥글게 처리
                 clonedElement.style.borderRadius = '12px 12px 0 0'; 
             }
         }
@@ -263,7 +262,7 @@ const MusicTaste = () => {
       
     } catch (err) {
       console.error('이미지 생성 실패:', err);
-      alert('이미지 저장 중 오류가 발생했습니다.');
+      alert('이미지 저장 중 오류가 발생했습니다. (잠시 후 다시 시도해주세요)');
     } finally {
       setIsSaving(false);
       setIsShareModalOpen(false);
@@ -293,7 +292,7 @@ const MusicTaste = () => {
       const url = `${window.location.origin}/share/${resultCode}`;
       await navigator.clipboard.writeText(url).catch(() => {}); 
 
-      // 2. 이미지 생성 (상단 캡처 영역만)
+      // 2. 이미지 생성
       const canvas = await html2canvas(targetElement, { 
         backgroundColor: '#ffffff', 
         scale: 2, 
@@ -313,7 +312,7 @@ const MusicTaste = () => {
       const fileName = `MusicTasty_${finalResultData.name.replace(/\s+/g, '_')}.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
 
-      // 3. Web Share API (모바일 지원 시)
+      // 3. Web Share API
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
@@ -321,7 +320,6 @@ const MusicTaste = () => {
           text: '나의 음악 취향 결과! (링크가 복사되었습니다)', 
         });
       } else {
-        // 4. PC 또는 미지원 브라우저
         const imageUrl = canvas.toDataURL('image/png');
         setSavedImageUrl(imageUrl);
         alert(lang === 'en' 
@@ -353,8 +351,6 @@ const MusicTaste = () => {
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 font-sans text-white select-none relative">
       
-      {/* ⚠️ Kakao SDK 삭제됨 */}
-
       <div className="absolute top-4 right-4 z-50">
         <button 
           onClick={() => setLang(prev => prev === 'en' ? 'ko' : 'en')}
@@ -419,10 +415,9 @@ const MusicTaste = () => {
       {step === 99 && (
         <div className="w-full max-w-sm animate-slide-up pb-10">
           
-          {/* 전체 영수증 컨테이너 */}
           <div ref={ticketRef} className="bg-white text-black relative font-mono pb-8 rounded-t-xl shadow-2xl">
             
-            {/* ★ 캡처 대상 영역 (이 div 안의 내용만 공유 이미지로 저장됨) ★ */}
+            {/* ★ 캡처 대상 영역 ★ */}
             <div id="printable-receipt-area" className="p-5 bg-white rounded-t-xl">
                 <div className="text-center border-b-2 border-dashed border-gray-300 pb-3 mb-4">
                     <h2 className="text-xl font-black tracking-tighter uppercase">{t.ticketTitle}</h2>
@@ -464,9 +459,9 @@ const MusicTaste = () => {
                     </div>
                 </div>
             </div>
-            {/* ★ 캡처 대상 영역 끝 ★ */}
+            {/* 캡처 대상 영역 끝 */}
 
-            {/* 캡처 제외 영역 (화면엔 보임) */}
+            {/* 캡처 제외 영역 (추천 아티스트, Footer) */}
             <div className="px-5">
                 <div className="mb-0.5">
                     <SectionDivider title={t.headChefs} />
@@ -483,16 +478,21 @@ const MusicTaste = () => {
                     </div>
                 </div>
                 
-                {/* 바코드 제거됨 */}
-
-                {/* Footer */}
+                {/* [수정됨] Footer 로고: 표준 img 태그 사용 (html2canvas 에러 해결) */}
                 <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex items-center justify-center gap-3 opacity-90">
-                    <div className="relative w-6 h-6"> 
-                        <img src="/logo_symbol.png" alt="Symbol" className="object-contain" />
+                    <div className="w-6 h-6 flex items-center justify-center"> 
+                        <img 
+                          src="/logo_symbol.png" 
+                          alt="Symbol" 
+                          className="w-full h-full object-contain" 
+                        />
                     </div>
-                    <div className="relative w-20 h-5"> 
-                        <img
-                         src="/logo_text.png" alt="Logo Type" className="object-contain" />
+                    <div className="w-20 h-5 flex items-center justify-center"> 
+                        <img 
+                          src="/logo_text.png" 
+                          alt="Logo Type" 
+                          className="w-full h-full object-contain" 
+                        />
                     </div>
                 </div>
             </div>
@@ -541,7 +541,6 @@ const MusicTaste = () => {
               </button>
 
               <button onClick={handleInstagramShare} disabled={isSaving} className="flex flex-col items-center gap-3 group p-2 rounded-xl hover:bg-gray-50 transition">
-                {/* 인스타그램 로고 이미지 적용됨 */}
                 <div className="w-14 h-14 relative flex items-center justify-center group-hover:scale-110 transition-transform">
                     {isSaving ? (
                         <span className="text-2xl">⏳</span>

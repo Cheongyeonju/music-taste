@@ -18,7 +18,11 @@ body {
 /* 커스텀 유틸리티 (Tailwind v4 방식 호환) */
 @layer utilities {
   .bg-neon-gradient {
-    background-image: linear-gradient(to right, var(--color-purple-600), var(--color-blue-600));
+    /* [수정 전] var(--color-purple-600) 등이 oklch일 수 있어 위험함 */
+    /* background-image: linear-gradient(to right, var(--color-purple-600), var(--color-blue-600)); */
+    
+    /* [수정 후] HEX 코드로 고정하여 html2canvas 오류 원천 차단 */
+    background-image: linear-gradient(to right, #9333ea, #2563eb);
   }
   
   /* v4에서는 @apply가 작동하지 않을 경우를 대비해 표준 CSS로 안전하게 작성 */
