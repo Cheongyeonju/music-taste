@@ -262,7 +262,7 @@ const MusicTaste = () => {
       
     } catch (err) {
       console.error('이미지 생성 실패:', err);
-      alert('이미지 저장 중 오류가 발생했습니다. (잠시 후 다시 시도해주세요)');
+      alert('이미지 저장 중 오류가 발생했습니다.');
     } finally {
       setIsSaving(false);
       setIsShareModalOpen(false);
@@ -288,11 +288,9 @@ const MusicTaste = () => {
     setIsSaving(true);
     
     try {
-      // 1. 링크 복사
       const url = `${window.location.origin}/share/${resultCode}`;
       await navigator.clipboard.writeText(url).catch(() => {}); 
 
-      // 2. 이미지 생성
       const canvas = await html2canvas(targetElement, { 
         backgroundColor: '#ffffff', 
         scale: 2, 
@@ -312,7 +310,6 @@ const MusicTaste = () => {
       const fileName = `MusicTasty_${finalResultData.name.replace(/\s+/g, '_')}.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
 
-      // 3. Web Share API
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
@@ -340,9 +337,9 @@ const MusicTaste = () => {
 
   const SectionDivider = ({ title }: { title: string }) => (
     <div className="flex items-center gap-2 mb-3 mt-1">
-      <div className="flex-1 h-px border-t border-dashed border-gray-300"></div>
-      <span className="shrink-0 text-[10px] font-black text-gray-400 uppercase tracking-widest">{title}</span>
-      <div className="flex-1 h-px border-t border-dashed border-gray-300"></div>
+      <div className="flex-1 h-px border-t border-dashed border-[#d1d5db]"></div> {/* gray-300 -> HEX */}
+      <span className="shrink-0 text-[10px] font-black text-[#9ca3af] uppercase tracking-widest">{title}</span> {/* gray-400 -> HEX */}
+      <div className="flex-1 h-px border-t border-dashed border-[#d1d5db]"></div> {/* gray-300 -> HEX */}
     </div>
   );
 
@@ -417,16 +414,16 @@ const MusicTaste = () => {
           
           <div ref={ticketRef} className="bg-white text-black relative font-mono pb-8 rounded-t-xl shadow-2xl">
             
-            {/* 캡처 대상 영역 */}
+            {/* ★ 캡처 대상 영역 (Tailwind 변수 사용 금지: HEX 코드로 강제 고정) ★ */}
             <div id="printable-receipt-area" className="p-5 bg-white rounded-t-xl">
-                <div className="text-center border-b-2 border-dashed border-gray-300 pb-3 mb-4">
+                <div className="text-center border-b-2 border-dashed border-[#d1d5db] pb-3 mb-4"> {/* border-gray-300 -> #d1d5db */}
                     <h2 className="text-xl font-black tracking-tighter uppercase">{t.ticketTitle}</h2>
-                    <p className="text-[10px] text-gray-600 mt-0.5">{new Date().toLocaleDateString()}</p>
+                    <p className="text-[10px] text-[#4b5563] mt-0.5">{new Date().toLocaleDateString()}</p> {/* text-gray-600 -> #4b5563 */}
                 </div>
                 <div className="text-center mb-6">
                     <div className="text-5xl mb-2">{emoji}</div>
                     <h3 className="text-lg font-black uppercase leading-tight mb-1">{finalResultData.name}</h3>
-                    <p className="text-[10px] text-gray-700 font-sans leading-relaxed px-1 break-keep">{finalResultData.description}</p>
+                    <p className="text-[10px] text-[#374151] font-sans leading-relaxed px-1 break-keep">{finalResultData.description}</p> {/* text-gray-700 -> #374151 */}
                 </div>
                 <div className="mb-6">
                     <SectionDivider title={t.analysis} />
@@ -435,13 +432,13 @@ const MusicTaste = () => {
                         const values = METRIC_VALUES[idx];
                         const isLeftSelected = answers[idx] === values.leftVal;
                         return (
-                            <div key={idx} className="flex items-center justify-between text-[9px] h-5 border-b border-dotted border-gray-200 last:border-0">
-                            <span className="font-bold text-gray-600 uppercase tracking-wider w-20 shrink-0 whitespace-nowrap text-left">{idx + 1}. {metric.label}</span>
+                            <div key={idx} className="flex items-center justify-between text-[9px] h-5 border-b border-dotted border-[#e5e7eb] last:border-0"> {/* border-gray-200 -> #e5e7eb */}
+                            <span className="font-bold text-[#4b5563] uppercase tracking-wider w-20 shrink-0 whitespace-nowrap text-left">{idx + 1}. {metric.label}</span> {/* text-gray-600 -> #4b5563 */}
                             <div className="w-48 grid grid-cols-2 gap-1"> 
-                                <div className={`flex items-center gap-1.5 ${isLeftSelected ? 'text-black font-bold' : 'text-gray-400'}`}>
+                                <div className={`flex items-center gap-1.5 ${isLeftSelected ? 'text-black font-bold' : 'text-[#9ca3af]'}`}> {/* text-gray-400 -> #9ca3af */}
                                 <span className="text-[10px] w-3 text-center shrink-0">{isLeftSelected ? '☑' : '☐'}</span><span className="truncate">{metric.left}</span>
                                 </div>
-                                <div className={`flex items-center gap-1.5 ${!isLeftSelected ? 'text-black font-bold' : 'text-gray-400'}`}>
+                                <div className={`flex items-center gap-1.5 ${!isLeftSelected ? 'text-black font-bold' : 'text-[#9ca3af]'}`}>
                                 <span className="text-[10px] w-3 text-center shrink-0">{!isLeftSelected ? '☑' : '☐'}</span><span className="truncate">{metric.right}</span>
                                 </div>
                             </div>
@@ -454,7 +451,11 @@ const MusicTaste = () => {
                     <SectionDivider title={t.tastingNotes} />
                     <div className="flex flex-wrap justify-center gap-1.5 pt-1">
                         {finalResultData.tags.slice(0, 3).map((tag) => ( 
-                        <span key={tag} className="px-2 py-0.5 rounded border bg-purple-50 border-purple-200 text-purple-700 text-[10px] font-bold uppercase tracking-wide">#{tag}</span>
+                        <span key={tag} className="px-2 py-0.5 rounded border bg-[#faf5ff] border-[#e9d5ff] text-[#7e22ce] text-[10px] font-bold uppercase tracking-wide">#{tag}</span>
+                        /* bg-purple-50  -> #faf5ff
+                           border-purple-200 -> #e9d5ff
+                           text-purple-700 -> #7e22ce 
+                        */
                         ))}
                     </div>
                 </div>
@@ -477,7 +478,7 @@ const MusicTaste = () => {
                     </div>
                 </div>
                 
-                {/* Footer: 로고 이미지 태그 수정됨 */}
+                {/* [수정 완료] Footer: fill/unoptimized 제거 후 표준 img 태그 사용 */}
                 <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex items-center justify-center gap-3 opacity-90">
                     <div className="w-6 h-6 flex items-center justify-center"> 
                         <img 

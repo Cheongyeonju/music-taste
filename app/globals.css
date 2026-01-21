@@ -1,16 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  /* [수정 1] body에서 사용하는 배경 변수 복구 (안전한 숫자 값) */
   --background-start-rgb: 0, 0, 0;
   --background-end-rgb: 17, 17, 17;
 }
 
 body {
-  /* [수정 2] rgb() 함수 대신 안전한 HEX 코드로 명시 */
   color: #ffffff;
-  
-  /* 배경 그라데이션: 변수 사용하되, 값은 위에서 정의한 안전한 숫자로 처리 */
   background: linear-gradient(
       to bottom,
       transparent,
@@ -19,15 +15,13 @@ body {
     rgb(var(--background-start-rgb));
 }
 
-/* 커스텀 유틸리티 */
 @layer utilities {
   .bg-neon-gradient {
-    /* [수정 3] html2canvas 오류 원천 차단: 변수 제거하고 HEX 코드로 고정 */
+    /* [안전장치] Tailwind 변수 사용 안 함 (HEX 코드 사용) */
     background-image: linear-gradient(to right, #9333ea, #2563eb);
   }
   
   .text-neon-gradient {
-    /* 여기도 HEX 코드로 안전하게 유지 */
     background: linear-gradient(to right, #A855F7, #60A5FA);
     -webkit-background-clip: text;
     background-clip: text;
