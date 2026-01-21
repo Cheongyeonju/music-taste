@@ -178,8 +178,6 @@ const MusicTaste = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedImageUrl, setSavedImageUrl] = useState<string | null>(null);
-  
-  // 카카오톡 인앱 브라우저 감지용 상태
   const [isKakaoInApp, setIsKakaoInApp] = useState(false);
 
   const ticketRef = useRef<HTMLDivElement>(null);
@@ -187,21 +185,16 @@ const MusicTaste = () => {
   const t = UI_TEXT[lang];
   const currentQuestions = lang === 'ko' ? QUESTIONS_KO : QUESTIONS_EN;
 
-  // [카카오톡 인앱 브라우저 탈출 로직]
+  // 카카오톡 인앱 브라우저 감지 및 처리
   useEffect(() => {
     const userAgent = navigator.userAgent.toLowerCase();
-    const isKakao = userAgent.includes('kakao');
-
-    if (isKakao) {
-      // Android: intent scheme을 통해 강제로 외부 브라우저(크롬 등) 호출
+    if (userAgent.includes('kakao')) {
       if (userAgent.includes('android')) {
         const url = window.location.href.replace(/https?:\/\//i, '');
-        // intent 스킴 생성 (크롬으로 열기 시도, 없으면 브라우저 선택창)
         const intentUrl = `intent://${url}#Intent;scheme=https;package=com.android.chrome;end`;
         window.location.href = intentUrl;
       } else {
-        // iOS: 강제 탈출 불가 -> 가이드 모달 띄우기
-        setIsKakaoInApp(true);
+        setIsKakaoInApp(true); // iOS는 가이드 표시
       }
     }
   }, []);
@@ -251,24 +244,26 @@ const MusicTaste = () => {
   
   const finalResultData = getResultText();
 
-  // [이미지 생성 헬퍼 함수]
+  // [이미지 생성 함수] - HEX 코드 필수 사용
   const generateImageBlob = async (): Promise<Blob | null> => {
     const targetElement = document.getElementById('printable-receipt-area');
     if (!targetElement) return null;
 
     try {
       const canvas = await html2canvas(targetElement, { 
-        backgroundColor: '#f8f8f4',
+        backgroundColor: '#f8f8f4', // HEX 코드로 고정
         scale: 3, 
         useCORS: true, 
         logging: false,
         onclone: (clonedDoc) => {
             const clonedElement = clonedDoc.getElementById('printable-receipt-area');
             if (clonedElement) {
-                clonedElement.style.width = '360px'; // 모바일 너비 고정
+                // 모바일 해상도 너비 고정 (비율 유지 핵심)
+                clonedElement.style.width = '375px'; 
                 clonedElement.style.borderRadius = '16px 16px 0 0'; 
                 clonedElement.style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)';
-                clonedElement.style.letterSpacing = '-0.5px'; // 자간 보정
+                // 자간 미세 조정
+                clonedElement.style.letterSpacing = '-0.02em';
             }
         }
       });
@@ -279,12 +274,9 @@ const MusicTaste = () => {
     }
   };
 
-
-  // [링크 복사 함수]
   const handleCopyLink = async () => {
     try {
       const url = `${window.location.origin}/share/${resultCode}`;
-      
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(url);
         alert(lang === 'en' ? 'Link Copied!' : '링크가 복사되었습니다!');
@@ -298,7 +290,6 @@ const MusicTaste = () => {
     }
   };
 
-  // [인스타그램/네이티브 공유 함수]
   const handleInstagramShare = async () => {
     if (isSaving) return;
     setIsSaving(true);
@@ -306,11 +297,6 @@ const MusicTaste = () => {
     let blob: Blob | null = null;
 
     try {
-      const url = `${window.location.origin}/share/${resultCode}`;
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-         await navigator.clipboard.writeText(url).catch(() => {}); 
-      }
-
       blob = await generateImageBlob();
       
       if (!blob) {
@@ -320,35 +306,37 @@ const MusicTaste = () => {
       const fileName = `MusicTasty_${finalResultData.name.replace(/\s+/g, '_')}.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
 
+      // 네이티브 공유 시도 (카카오톡 등에서 실패 시 catch로 이동)
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: 'Music Tasty Result',
-          text: '나의 음악 취향 결과! (링크가 복사되었습니다)', 
+          text: '나의 음악 취향 결과!', 
         });
       } else {
         throw new Error('Native share not supported');
       }
     } catch (err) {
-      console.log('네이티브 공유 실패, 이미지 저장 모달로 전환:', err);
-      
+      console.log('네이티브 공유 불가 -> 이미지 저장 모달로 전환');
+      // 공유 실패 시 무조건 이미지 팝업 띄움 (가장 확실한 방법)
       if (blob) {
          const imageUrl = URL.createObjectURL(blob);
          setSavedImageUrl(imageUrl);
       } else {
-         alert('이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+         alert('이미지 생성 중 오류가 발생했습니다.');
       }
-
     } finally {
       setIsSaving(false);
       setIsShareModalOpen(false);
     }
   };
 
+  // 구분선: 타이틀 수직 정렬 보정
   const SectionDivider = ({ title }: { title: string }) => (
-    <div className="flex items-center gap-3 mb-4 mt-2">
+    <div className="flex items-center gap-3 mb-5 mt-2">
       <div className="flex-1 h-px border-t border-dashed border-[#d1d5db]"></div>
-      <span className="shrink-0 text-[10px] font-black text-[#9ca3af] uppercase tracking-widest -mt-1">{title}</span>
+      {/* pt-[2px]로 시각적 중앙 정렬 보정 */}
+      <span className="shrink-0 text-[10px] font-black text-[#9ca3af] uppercase tracking-widest pt-[2px]">{title}</span>
       <div className="flex-1 h-px border-t border-dashed border-[#d1d5db]"></div>
     </div>
   );
@@ -372,15 +360,13 @@ const MusicTaste = () => {
         </button>
       </div>
 
-      {/* 카카오톡 인앱 브라우저 가이드 모달 (iOS용) */}
       {isKakaoInApp && (
         <div className="fixed inset-0 z-[200] bg-black/90 flex flex-col items-end p-6 text-white font-bold animate-fade-in" onClick={() => setIsKakaoInApp(false)}>
             <div className="text-3xl animate-bounce mb-2">↗</div>
             <div className="text-right space-y-2">
                 <p className="text-xl text-yellow-400">Safari 브라우저로 열어주세요!</p>
                 <p className="text-sm font-normal text-gray-300">
-                    카카오톡에서는 이미지 공유/저장이<br/>
-                    제한될 수 있습니다.<br/><br/>
+                    카카오톡에서는 기능이 제한됩니다.<br/>
                     우측 상단 <strong>[...]</strong> 버튼을 누르고<br/>
                     <strong>[Safari로 열기]</strong>를 선택해주세요.
                 </p>
@@ -438,45 +424,48 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 결과 화면 (영수증) */}
       {step === 99 && (
         <div className="w-full max-w-sm animate-slide-up pb-10 relative z-10">
           
-          {/* 영수증 컨테이너 */}
           <div ref={ticketRef} className="relative font-mono rounded-t-2xl shadow-[0_4px_20px_rgba(0,0,0,0.1)] bg-[#f8f8f4] text-[#1f2937]">
             
-            {/* ★ 캡처 대상 영역 ★ */}
+            {/* ★ 캡처 대상 영역 (ID: printable-receipt-area) ★ */}
             <div id="printable-receipt-area" className="relative bg-[#f8f8f4] rounded-t-2xl">
                 
-                <div className="p-5 pb-0">
-                    <div className="text-center border-b-2 border-dashed border-[#d1d5db] pb-4 mb-8">
+                <div className="p-6 pb-0">
+                    <div className="text-center border-b-2 border-dashed border-[#d1d5db] pb-5 mb-8">
                         <h2 className="text-xl font-black tracking-tight uppercase">{t.ticketTitle}</h2>
                         <p className="text-[10px] text-[#6b7280] mt-1">{new Date().toLocaleDateString()}</p>
                     </div>
 
-                    <div className="text-center mb-8">
-                        <div className="text-6xl mb-5">{emoji}</div>
-                        <h3 className="text-lg font-black uppercase leading-tight mb-2">{finalResultData.name}</h3>
-                        <p className="text-[10px] text-[#4b5563] font-sans leading-relaxed px-1 break-keep">{finalResultData.description}</p>
+                    {/* 음식 이모지 간격 대폭 확보 */}
+                    <div className="text-center mb-10">
+                        <div className="text-7xl mb-6">{emoji}</div>
+                        <h3 className="text-xl font-black uppercase leading-tight mb-3">{finalResultData.name}</h3>
+                        <p className="text-[11px] text-[#4b5563] font-sans leading-relaxed px-1 break-keep">{finalResultData.description}</p>
                     </div>
 
-                    <div className="mb-8">
+                    {/* 분석 그래프 - 레이아웃 겹침 방지 (Flex Table 구조) */}
+                    <div className="mb-10">
                         <SectionDivider title={t.analysis} />
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             {t.metrics.map((metric, idx) => {
                             const values = METRIC_VALUES[idx];
                             const isLeftSelected = answers[idx] === values.leftVal;
                             return (
                                 <div key={idx} className="flex items-center w-full py-1 border-b border-dotted border-[#e5e7eb] last:border-0">
-                                    <span className="w-20 shrink-0 font-bold text-[#374151] uppercase tracking-wider text-[10px] text-left">
+                                    {/* 왼쪽 라벨: 너비 고정 (겹침 방지) */}
+                                    <span className="w-[70px] shrink-0 font-bold text-[#374151] uppercase tracking-wider text-[10px] text-left">
                                         {idx + 1}. {metric.label}
                                     </span>
-                                    <div className="flex-1 grid grid-cols-2 gap-1 ml-2">
-                                        <div className={`flex items-center gap-1.5 ${isLeftSelected ? 'text-black font-bold' : 'text-[#9ca3af]'}`}>
+                                    
+                                    {/* 오른쪽 체크박스: 남은 공간 균등 분할 */}
+                                    <div className="flex-1 flex items-center justify-between pl-2">
+                                        <div className={`flex-1 flex items-center gap-1.5 ${isLeftSelected ? 'text-black font-bold' : 'text-[#9ca3af]'}`}>
                                             <span className="text-[10px] w-3 text-center shrink-0">{isLeftSelected ? '☑' : '☐'}</span>
                                             <span className="text-[10px] whitespace-nowrap">{metric.left}</span>
                                         </div>
-                                        <div className={`flex items-center gap-1.5 ${!isLeftSelected ? 'text-black font-bold' : 'text-[#9ca3af]'}`}>
+                                        <div className={`flex-1 flex items-center gap-1.5 ${!isLeftSelected ? 'text-black font-bold' : 'text-[#9ca3af]'}`}>
                                             <span className="text-[10px] w-3 text-center shrink-0">{!isLeftSelected ? '☑' : '☐'}</span>
                                             <span className="text-[10px] whitespace-nowrap">{metric.right}</span>
                                         </div>
@@ -487,37 +476,44 @@ const MusicTaste = () => {
                         </div>
                     </div>
 
-                    <div className="mb-8">
+                    {/* 테이스팅 노트 - 정렬 보정 */}
+                    <div className="mb-10">
                         <SectionDivider title={t.tastingNotes} />
-                        <div className="flex flex-wrap justify-center gap-1.5 pt-1">
+                        <div className="flex flex-wrap justify-center gap-2 pt-1">
                             {finalResultData.tags.slice(0, 3).map((tag) => ( 
-                            <span key={tag} className="flex items-center justify-center px-2 py-1 rounded border bg-[#faf5ff] border-[#e9d5ff] text-[#7e22ce] text-[10px] font-bold uppercase tracking-wide leading-none">#{tag}</span>
+                            // 높이 지정 및 Flex Center로 텍스트 수직 중앙 정렬
+                            <span key={tag} className="h-6 flex items-center justify-center px-3 rounded border bg-[#faf5ff] border-[#e9d5ff] text-[#7e22ce] text-[10px] font-bold uppercase tracking-wide pt-[1px]">#{tag}</span>
                             ))}
                         </div>
                     </div>
                 
-                    <div className="mb-4">
+                    {/* 추천 아티스트 - 뱃지 정렬 및 이름 줄바꿈 처리 */}
+                    <div className="mb-6">
                         <SectionDivider title={t.headChefs} />
-                        <div className="flex justify-center gap-4 pt-2">
+                        <div className="flex justify-center gap-5 pt-3">
                             {chefs && chefs.map((chef, idx) => (
-                            <div key={idx} className="flex flex-col items-center gap-2 w-20">
+                            <div key={idx} className="flex flex-col items-center gap-2 w-[72px]">
                                 <div className="relative">
-                                    <div className="w-10 h-10 rounded-full bg-[#f3f4f6] flex items-center justify-center text-xl shadow-sm border border-[#e5e7eb] text-[#374151]">👨‍🍳</div>
-                                    <span className={`absolute -bottom-1 -right-1 w-5 h-3 flex items-center justify-center text-[6px] font-bold rounded text-white border border-white ${chef.region === 'KR' ? 'bg-black' : 'bg-[#6b7280]'}`}>{chef.region}</span>
+                                    <div className="w-12 h-12 rounded-full bg-[#f3f4f6] flex items-center justify-center text-2xl shadow-sm border border-[#e5e7eb] text-[#374151]">👨‍🍳</div>
+                                    {/* 뱃지: absolute 정위치 및 내부 텍스트 정렬 */}
+                                    <div className={`absolute -bottom-1 -right-1 w-6 h-3.5 flex items-center justify-center rounded text-white border border-white ${chef.region === 'KR' ? 'bg-black' : 'bg-[#6b7280]'}`}>
+                                        <span className="text-[7px] font-bold pt-[1px]">{chef.region}</span>
+                                    </div>
                                 </div>
-                                <div className="h-8 flex items-start justify-center w-full">
-                                    <span className="text-[10px] font-bold text-[#1f2937] text-center leading-tight break-keep">{chef.name}</span>
+                                {/* 이름 영역: 너비 확보 및 중앙 정렬 */}
+                                <div className="w-full flex items-start justify-center text-center">
+                                    <span className="text-[10px] font-bold text-[#1f2937] leading-tight break-keep">{chef.name}</span>
                                 </div>
                             </div>
                             ))}
                         </div>
                     </div>
                     
-                    <div className="mt-4 pt-4 border-t-2 border-dashed border-[#d1d5db] flex items-center justify-center gap-3 pb-8">
-                        <div className="w-6 h-6 flex items-center justify-center"> 
+                    <div className="mt-6 pt-5 border-t-2 border-dashed border-[#d1d5db] flex items-center justify-center gap-3 pb-8">
+                        <div className="w-7 h-7 flex items-center justify-center"> 
                             <img src="/logo_symbol.png" alt="Symbol" className="w-full h-full object-contain" />
                         </div>
-                        <div className="w-20 h-5 flex items-center justify-center"> 
+                        <div className="w-24 h-6 flex items-center justify-center"> 
                             <img src="/logo_text.png" alt="Logo Type" className="w-full h-full object-contain" />
                         </div>
                     </div>
@@ -547,12 +543,10 @@ const MusicTaste = () => {
       {isShareModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsShareModalOpen(false)}>
           <div className="w-full max-w-sm bg-[#252525] rounded-t-2xl overflow-hidden transform transition-transform duration-300 ease-out pb-4" onClick={e => e.stopPropagation()}>
-            
             <div className="p-4 text-center border-b border-gray-700/50 relative">
                <h3 className="text-white font-bold text-base">{t.shareMenuTitle}</h3>
                <button onClick={() => setIsShareModalOpen(false)} className="absolute right-4 top-4 text-gray-400 hover:text-white">✕</button>
             </div>
-
             <div className="flex flex-col">
                 <button onClick={handleCopyLink} className="flex items-center gap-3 p-5 hover:bg-gray-700/50 transition text-left border-b border-gray-700/50 active:bg-gray-700">
                     <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
@@ -560,19 +554,12 @@ const MusicTaste = () => {
                     </div>
                     <span className="text-white font-bold text-sm">{t.copyLink}</span>
                 </button>
-                
                 <button onClick={handleInstagramShare} disabled={isSaving} className="flex items-center gap-3 p-5 hover:bg-gray-700/50 transition text-left active:bg-gray-700">
                     <div className="w-10 h-10 relative flex items-center justify-center">
                         {isSaving ? (
                             <span className="text-xl animate-spin">⏳</span>
                         ) : (
-                             <Image 
-                                src="/Instagram_logo.png" 
-                                alt="Instagram" 
-                                fill 
-                                className="object-contain p-1" 
-                                unoptimized 
-                            />
+                             <Image src="/Instagram_logo.png" alt="Instagram" fill className="object-contain p-1" unoptimized />
                         )}
                     </div>
                     <span className="text-white font-bold text-sm">{t.shareImage}</span>
@@ -584,23 +571,15 @@ const MusicTaste = () => {
 
       {savedImageUrl && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSavedImageUrl(null)}>
-          <div className="max-w-sm w-full bg-white rounded-xl p-4 flex flex-col items-center space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="max-w-sm w-full bg-white rounded-xl p-6 flex flex-col items-center space-y-6" onClick={e => e.stopPropagation()}>
             <h3 className="font-bold text-lg text-black">이미지 저장</h3>
-            <p className="text-sm text-gray-500 text-center">
-              아래 이미지를 <span className="font-bold text-purple-600">길게 눌러서</span><br/>
-              &apos;사진 앱에 저장&apos;을 선택해주세요.
+            <p className="text-sm text-gray-500 text-center leading-relaxed">
+              아래 이미지를 <span className="font-bold text-purple-600">길게 눌러서 저장</span> 후<br/>인스타그램에 공유해주세요!
             </p>
-            <div className="relative w-full shadow-lg rounded-xl overflow-hidden">
-              <img 
-                src={savedImageUrl} 
-                alt="Saved Result" 
-                className="w-full h-auto object-contain"
-              />
+            <div className="relative w-full shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
+              <img src={savedImageUrl} alt="Saved Result" className="w-full h-auto object-contain" />
             </div>
-            <button 
-              onClick={() => setSavedImageUrl(null)}
-              className="w-full py-3 bg-gray-900 text-white rounded-lg font-bold hover:bg-gray-800 transition"
-            >
+            <button onClick={() => setSavedImageUrl(null)} className="w-full py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition">
               닫기
             </button>
           </div>
