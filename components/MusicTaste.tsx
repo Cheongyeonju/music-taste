@@ -3,11 +3,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Script from 'next/script';
 import html2canvas from 'html2canvas';
 import { RECIPES, RECIPES_KO, DishCode, ChefInfo } from '@/constants/dishData';
 
-// [타입 정의 추가] TypeScript 에러 방지
+// [타입 정의]
 interface Option {
   text: string;
   subtext: string;
@@ -21,6 +20,7 @@ interface Question {
   options: Option[];
 }
 
+// [상수 데이터]
 const QUESTIONS_EN: Question[] = [
   {
     category: 'BASE',
@@ -159,12 +159,6 @@ const METRIC_VALUES = [
   { leftVal: 'F', rightVal: 'H' },
 ];
 
-declare global {
-  interface Window {
-    Kakao: any;
-  }
-}
-
 const MusicTaste = () => {
   const router = useRouter();
   const [lang, setLang] = useState<'en' | 'ko'>('en'); 
@@ -184,15 +178,6 @@ const MusicTaste = () => {
 
   const t = UI_TEXT[lang];
   const currentQuestions = lang === 'ko' ? QUESTIONS_KO : QUESTIONS_EN;
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.Kakao) {
-      if (!window.Kakao.isInitialized()) {
-        // [중요] 실제 카카오 JS 키를 여기에 넣으세요
-        window.Kakao.init('YOUR_KAKAO_JS_KEY'); 
-      }
-    }
-  }, []);
 
   const handleSelect = (idx: number, value: DishCode) => {
     if (selectedOption !== null) return;
@@ -239,32 +224,35 @@ const MusicTaste = () => {
   
   const finalResultData = getResultText();
 
-  // [수정] 이미지 저장 함수 (안정성 강화)
+  // [이미지 저장 함수] - 특정 영역(printable-receipt-area)만 캡처
   const handleDownloadImage = async () => {
-    if (!ticketRef.current || isSaving) return;
+    const targetElement = document.getElementById('printable-receipt-area');
+    if (!targetElement || isSaving) return;
     setIsSaving(true);
     
     try {
-      // 1. 캔버스 생성
-      const canvas = await html2canvas(ticketRef.current, { 
-        backgroundColor: '#ffffff', // 배경색 지정 (투명 방지)
-        scale: 2, // 고해상도
-        useCORS: true, // 외부 이미지(Next.js 이미지 포함) 허용
-        logging: false, // 디버그 로그 끄기
-        // allowTaint: true, // <-- [제거] 이 옵션은 toDataURL 에러를 유발하므로 뺍니다.
+      const canvas = await html2canvas(targetElement, { 
+        backgroundColor: '#ffffff', 
+        scale: 2, 
+        useCORS: true, 
+        logging: false,
+        onclone: (clonedDoc) => {
+            const clonedElement = clonedDoc.getElementById('printable-receipt-area');
+            if (clonedElement) {
+                // 저장되는 이미지의 상단 모서리를 둥글게 처리
+                clonedElement.style.borderRadius = '12px 12px 0 0'; 
+            }
+        }
       });
       
       const imageUrl = canvas.toDataURL('image/png');
       const fileName = `MusicTasty_${finalResultData.name.replace(/\s+/g, '_')}.png`;
 
-      // 2. 기기별 처리
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
       if (isMobile) {
-        // 모바일: 팝업 띄워서 길게 눌러 저장 유도
         setSavedImageUrl(imageUrl);
       } else {
-        // PC: 바로 다운로드
         const link = document.createElement('a');
         link.href = imageUrl;
         link.download = fileName;
@@ -278,7 +266,6 @@ const MusicTaste = () => {
       alert('이미지 저장 중 오류가 발생했습니다.');
     } finally {
       setIsSaving(false);
-      // 공유 모달에서 눌렀을 경우 닫기
       setIsShareModalOpen(false);
     }
   };
@@ -291,19 +278,33 @@ const MusicTaste = () => {
       setIsShareModalOpen(false);
     } catch (err) {
       console.error(err);
+      alert('링크 복사에 실패했습니다.');
     }
   };
 
-  // [수정] 인스타그램 공유 함수 (Web Share API 중심)
+  // [인스타그램 공유 함수] - 링크 복사 후 이미지 공유
   const handleInstagramShare = async () => {
-    if (!ticketRef.current || isSaving) return;
+    const targetElement = document.getElementById('printable-receipt-area');
+    if (!targetElement || isSaving) return;
     setIsSaving(true);
     
     try {
-      const canvas = await html2canvas(ticketRef.current, { 
+      // 1. 링크 복사
+      const url = `${window.location.origin}/share/${resultCode}`;
+      await navigator.clipboard.writeText(url).catch(() => {}); 
+
+      // 2. 이미지 생성 (상단 캡처 영역만)
+      const canvas = await html2canvas(targetElement, { 
         backgroundColor: '#ffffff', 
         scale: 2, 
         useCORS: true, 
+        logging: false,
+        onclone: (clonedDoc) => {
+            const clonedElement = clonedDoc.getElementById('printable-receipt-area');
+            if (clonedElement) {
+                clonedElement.style.borderRadius = '12px 12px 0 0';
+            }
+        }
       });
       
       const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -312,23 +313,27 @@ const MusicTaste = () => {
       const fileName = `MusicTasty_${finalResultData.name.replace(/\s+/g, '_')}.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
 
-      // Web Share API 지원 여부 확인 (모바일)
+      // 3. Web Share API (모바일 지원 시)
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: 'Music Tasty Result',
-          text: '나의 음악 취향 결과입니다! #MusicTasty',
+          text: '나의 음악 취향 결과! (링크가 복사되었습니다)', 
         });
       } else {
-        // PC 혹은 미지원 브라우저: 다운로드 후 안내
+        // 4. PC 또는 미지원 브라우저
         const imageUrl = canvas.toDataURL('image/png');
         setSavedImageUrl(imageUrl);
-        alert('이미지가 생성되었습니다. 길게 눌러 저장 후 인스타그램에 업로드해주세요!');
+        alert(lang === 'en' 
+          ? 'Link copied! Save image and share on Instagram.' 
+          : '링크가 복사되었습니다!\n이미지를 저장 후 인스타그램 스토리에 올려주세요.');
       }
     } catch (err) {
       console.error('공유 실패:', err);
-      // 공유 API 실패 시 다운로드 로직으로 폴백
       handleDownloadImage(); 
+      alert(lang === 'en'
+        ? 'Sharing not supported. Image saved.'
+        : '공유하기가 지원되지 않아 이미지를 저장합니다.');
     } finally {
       setIsSaving(false);
       setIsShareModalOpen(false);
@@ -348,11 +353,7 @@ const MusicTaste = () => {
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 font-sans text-white select-none relative">
       
-      <Script src="https://t1.kakaocdn.net/kakao_js_sdk/2.6.0/kakao.min.js" integrity="sha384-6MFdIr0zOira1CHQkedUqJVql0YtcZA1P0nbPrQYJXVJZz0RWLXYy6Stq728HJp2" crossOrigin="anonymous" onLoad={() => {
-          if (window.Kakao && !window.Kakao.isInitialized()) {
-             window.Kakao.init('YOUR_KAKAO_JS_KEY'); 
-          }
-      }} />
+      {/* ⚠️ Kakao SDK 삭제됨 */}
 
       <div className="absolute top-4 right-4 z-50">
         <button 
@@ -403,7 +404,6 @@ const MusicTaste = () => {
                     className={`group p-5 border rounded-xl text-left transition-all duration-200 flex items-center justify-between ${isSelected ? 'bg-purple-600 border-purple-500 text-white scale-[1.02] shadow-lg shadow-purple-900/50' : 'bg-[#1A1A1A] border-gray-700 hover:border-purple-500 hover:bg-[#202020]'}`}>
                     <div>
                       <span className={`text-lg font-bold break-keep ${isSelected ? 'text-white' : 'group-hover:text-purple-300'}`}>
-                          {/* 타입 안전하게 수정됨 */}
                           <span className="mr-2">{opt.icon}</span>{opt.text}
                       </span>
                       <div className={`text-sm mt-1 break-keep leading-relaxed ${isSelected ? 'text-purple-200' : 'text-gray-400'}`}>{opt.subtext}</div>
@@ -418,71 +418,81 @@ const MusicTaste = () => {
 
       {step === 99 && (
         <div className="w-full max-w-sm animate-slide-up pb-10">
-          <div ref={ticketRef} className="bg-white text-black p-5 rounded-t-xl shadow-2xl relative font-mono pb-8">
-            <div className="text-center border-b-2 border-dashed border-gray-300 pb-3 mb-4">
-              <h2 className="text-xl font-black tracking-tighter uppercase">{t.ticketTitle}</h2>
-              <p className="text-[10px] text-gray-600 mt-0.5">{new Date().toLocaleDateString()}</p>
-            </div>
-            <div className="text-center mb-6">
-              <div className="text-5xl mb-2">{emoji}</div>
-              <h3 className="text-lg font-black uppercase leading-tight mb-1">{finalResultData.name}</h3>
-              <p className="text-[10px] text-gray-700 font-sans leading-relaxed px-1 break-keep">{finalResultData.description}</p>
-            </div>
-            <div className="mb-6">
-              <SectionDivider title={t.analysis} />
-              <div className="space-y-2">
-                {t.metrics.map((metric, idx) => {
-                  const values = METRIC_VALUES[idx];
-                  const isLeftSelected = answers[idx] === values.leftVal;
-                  return (
-                    <div key={idx} className="flex items-center justify-between text-[9px] h-5 border-b border-dotted border-gray-200 last:border-0">
-                      <span className="font-bold text-gray-600 uppercase tracking-wider w-20 shrink-0 whitespace-nowrap text-left">{idx + 1}. {metric.label}</span>
-                      <div className="w-48 grid grid-cols-2 gap-1"> 
-                        <div className={`flex items-center gap-1.5 ${isLeftSelected ? 'text-black font-bold' : 'text-gray-400'}`}>
-                          <span className="text-[10px] w-3 text-center shrink-0">{isLeftSelected ? '☑' : '☐'}</span><span className="truncate">{metric.left}</span>
-                        </div>
-                        <div className={`flex items-center gap-1.5 ${!isLeftSelected ? 'text-black font-bold' : 'text-gray-400'}`}>
-                          <span className="text-[10px] w-3 text-center shrink-0">{!isLeftSelected ? '☑' : '☐'}</span><span className="truncate">{metric.right}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="mb-6">
-              <SectionDivider title={t.tastingNotes} />
-              <div className="flex flex-wrap justify-center gap-1.5 pt-1">
-                {finalResultData.tags.slice(0, 3).map((tag) => ( 
-                  <span key={tag} className="px-2 py-0.5 rounded border bg-purple-50 border-purple-200 text-purple-700 text-[10px] font-bold uppercase tracking-wide">#{tag}</span>
-                ))}
-              </div>
-            </div>
-            <div className="mb-0.5">
-               <SectionDivider title={t.headChefs} />
-              <div className="flex justify-center gap-4 pt-1">
-                {chefs && chefs.map((chef, idx) => (
-                  <div key={idx} className="flex flex-col items-center gap-1 w-20">
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl shadow-sm border border-gray-200 text-gray-700">👨‍🍳</div>
-                      <span className={`absolute -bottom-1 -right-1 text-[7px] font-bold px-1 py-px rounded text-white border border-white ${chef.region === 'KR' ? 'bg-black' : 'bg-gray-500'}`}>{chef.region}</span>
-                    </div>
-                    <span className="text-[11px] font-bold text-gray-800 text-center leading-tight break-words w-full truncate">{chef.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="mt-4 pt-2 flex justify-center opacity-60">
-              <div className="h-5 w-28 bg-[url('https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/UPC-A-036000291452.svg/1200px-UPC-A-036000291452.svg.png')] bg-cover"></div>
-            </div>
-
-            {/* Footer */}
-            <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex items-center justify-center gap-3 opacity-90">
-                <div className="relative w-6 h-6"> 
-                    <Image src="/logo_symbol.png" alt="Symbol" fill className="object-contain" unoptimized />
+          
+          {/* 전체 영수증 컨테이너 */}
+          <div ref={ticketRef} className="bg-white text-black relative font-mono pb-8 rounded-t-xl shadow-2xl">
+            
+            {/* ★ 캡처 대상 영역 (이 div 안의 내용만 공유 이미지로 저장됨) ★ */}
+            <div id="printable-receipt-area" className="p-5 bg-white rounded-t-xl">
+                <div className="text-center border-b-2 border-dashed border-gray-300 pb-3 mb-4">
+                    <h2 className="text-xl font-black tracking-tighter uppercase">{t.ticketTitle}</h2>
+                    <p className="text-[10px] text-gray-600 mt-0.5">{new Date().toLocaleDateString()}</p>
                 </div>
-                <div className="relative w-20 h-5"> 
-                    <Image src="/logo_text.png" alt="Logo Type" fill className="object-contain" unoptimized />
+                <div className="text-center mb-6">
+                    <div className="text-5xl mb-2">{emoji}</div>
+                    <h3 className="text-lg font-black uppercase leading-tight mb-1">{finalResultData.name}</h3>
+                    <p className="text-[10px] text-gray-700 font-sans leading-relaxed px-1 break-keep">{finalResultData.description}</p>
+                </div>
+                <div className="mb-6">
+                    <SectionDivider title={t.analysis} />
+                    <div className="space-y-2">
+                        {t.metrics.map((metric, idx) => {
+                        const values = METRIC_VALUES[idx];
+                        const isLeftSelected = answers[idx] === values.leftVal;
+                        return (
+                            <div key={idx} className="flex items-center justify-between text-[9px] h-5 border-b border-dotted border-gray-200 last:border-0">
+                            <span className="font-bold text-gray-600 uppercase tracking-wider w-20 shrink-0 whitespace-nowrap text-left">{idx + 1}. {metric.label}</span>
+                            <div className="w-48 grid grid-cols-2 gap-1"> 
+                                <div className={`flex items-center gap-1.5 ${isLeftSelected ? 'text-black font-bold' : 'text-gray-400'}`}>
+                                <span className="text-[10px] w-3 text-center shrink-0">{isLeftSelected ? '☑' : '☐'}</span><span className="truncate">{metric.left}</span>
+                                </div>
+                                <div className={`flex items-center gap-1.5 ${!isLeftSelected ? 'text-black font-bold' : 'text-gray-400'}`}>
+                                <span className="text-[10px] w-3 text-center shrink-0">{!isLeftSelected ? '☑' : '☐'}</span><span className="truncate">{metric.right}</span>
+                                </div>
+                            </div>
+                            </div>
+                        );
+                        })}
+                    </div>
+                </div>
+                <div className="mb-6">
+                    <SectionDivider title={t.tastingNotes} />
+                    <div className="flex flex-wrap justify-center gap-1.5 pt-1">
+                        {finalResultData.tags.slice(0, 3).map((tag) => ( 
+                        <span key={tag} className="px-2 py-0.5 rounded border bg-purple-50 border-purple-200 text-purple-700 text-[10px] font-bold uppercase tracking-wide">#{tag}</span>
+                        ))}
+                    </div>
+                </div>
+            </div>
+            {/* ★ 캡처 대상 영역 끝 ★ */}
+
+            {/* 캡처 제외 영역 (화면엔 보임) */}
+            <div className="px-5">
+                <div className="mb-0.5">
+                    <SectionDivider title={t.headChefs} />
+                    <div className="flex justify-center gap-4 pt-1">
+                        {chefs && chefs.map((chef, idx) => (
+                        <div key={idx} className="flex flex-col items-center gap-1 w-20">
+                            <div className="relative">
+                            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl shadow-sm border border-gray-200 text-gray-700">👨‍🍳</div>
+                            <span className={`absolute -bottom-1 -right-1 text-[7px] font-bold px-1 py-px rounded text-white border border-white ${chef.region === 'KR' ? 'bg-black' : 'bg-gray-500'}`}>{chef.region}</span>
+                            </div>
+                            <span className="text-[11px] font-bold text-gray-800 text-center leading-tight break-words w-full truncate">{chef.name}</span>
+                        </div>
+                        ))}
+                    </div>
+                </div>
+                
+                {/* 바코드 제거됨 */}
+
+                {/* Footer */}
+                <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex items-center justify-center gap-3 opacity-90">
+                    <div className="relative w-6 h-6"> 
+                        <Image src="/logo_symbol.png" alt="Symbol" fill className="object-contain" unoptimized />
+                    </div>
+                    <div className="relative w-20 h-5"> 
+                        <Image src="/logo_text.png" alt="Logo Type" fill className="object-contain" unoptimized />
+                    </div>
                 </div>
             </div>
             
@@ -530,8 +540,19 @@ const MusicTaste = () => {
               </button>
 
               <button onClick={handleInstagramShare} disabled={isSaving} className="flex flex-col items-center gap-3 group p-2 rounded-xl hover:bg-gray-50 transition">
-                <div className="w-14 h-14 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform text-white">
-                  <span className="text-2xl">{isSaving ? '⏳' : '📸'}</span>
+                {/* 인스타그램 로고 이미지 적용됨 */}
+                <div className="w-14 h-14 relative flex items-center justify-center group-hover:scale-110 transition-transform">
+                    {isSaving ? (
+                        <span className="text-2xl">⏳</span>
+                    ) : (
+                        <Image 
+                            src="/Instagram_logo.png" 
+                            alt="Instagram" 
+                            fill 
+                            className="object-contain" 
+                            unoptimized 
+                        />
+                    )}
                 </div>
                 <span className="text-xs text-gray-600 font-bold">인스타 스토리</span>
               </button>
