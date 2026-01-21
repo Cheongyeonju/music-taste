@@ -224,7 +224,7 @@ const MusicTaste = () => {
   
   const finalResultData = getResultText();
 
-  // [이미지 저장 함수] - 특정 영역(printable-receipt-area)만 캡처
+  // [이미지 저장 함수]
   const handleDownloadImage = async () => {
     const targetElement = document.getElementById('printable-receipt-area');
     if (!targetElement || isSaving) return;
@@ -281,7 +281,7 @@ const MusicTaste = () => {
     }
   };
 
-  // [인스타그램 공유 함수] - 링크 복사 후 이미지 공유
+  // [인스타그램 공유 함수]
   const handleInstagramShare = async () => {
     const targetElement = document.getElementById('printable-receipt-area');
     if (!targetElement || isSaving) return;
@@ -417,7 +417,7 @@ const MusicTaste = () => {
           
           <div ref={ticketRef} className="bg-white text-black relative font-mono pb-8 rounded-t-xl shadow-2xl">
             
-            {/* ★ 캡처 대상 영역 ★ */}
+            {/* 캡처 대상 영역 */}
             <div id="printable-receipt-area" className="p-5 bg-white rounded-t-xl">
                 <div className="text-center border-b-2 border-dashed border-gray-300 pb-3 mb-4">
                     <h2 className="text-xl font-black tracking-tighter uppercase">{t.ticketTitle}</h2>
@@ -459,9 +459,8 @@ const MusicTaste = () => {
                     </div>
                 </div>
             </div>
-            {/* 캡처 대상 영역 끝 */}
-
-            {/* 캡처 제외 영역 (추천 아티스트, Footer) */}
+            
+            {/* 캡처 제외 영역 */}
             <div className="px-5">
                 <div className="mb-0.5">
                     <SectionDivider title={t.headChefs} />
@@ -478,7 +477,7 @@ const MusicTaste = () => {
                     </div>
                 </div>
                 
-                {/* [수정됨] Footer 로고: 표준 img 태그 사용 (html2canvas 에러 해결) */}
+                {/* Footer: 로고 이미지 태그 수정됨 */}
                 <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex items-center justify-center gap-3 opacity-90">
                     <div className="w-6 h-6 flex items-center justify-center"> 
                         <img 
