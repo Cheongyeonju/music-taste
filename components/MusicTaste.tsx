@@ -231,23 +231,25 @@ const MusicTaste = () => {
   const finalResultData = getResultText();
 
   // [이미지 생성 헬퍼 함수]
+  // 핵심 수정: backgroundColor를 HEX로 명시하여 Lab Color 오류 방지
   const generateImageBlob = async (): Promise<Blob | null> => {
     const targetElement = document.getElementById('printable-receipt-area');
     if (!targetElement) return null;
 
     try {
       const canvas = await html2canvas(targetElement, { 
-        backgroundColor: null, // 투명 배경 (부모 따름)
+        backgroundColor: '#f8f8f4', // 배경색 HEX 고정 (투명X)
         scale: 3, 
         useCORS: true, 
         logging: false,
         onclone: (clonedDoc) => {
             const clonedElement = clonedDoc.getElementById('printable-receipt-area');
             if (clonedElement) {
+                // 1. 너비 강제 고정으로 비율 유지
                 clonedElement.style.width = '360px';
+                // 2. 둥근 모서리 및 그림자 (이미지에서도 보이게)
                 clonedElement.style.borderRadius = '16px 16px 0 0'; 
-                // 자간 축소 (html2canvas 특유의 폰트 퍼짐 보정)
-                clonedElement.style.letterSpacing = '-0.5px'; 
+                clonedElement.style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)';
             }
         }
       });
@@ -258,16 +260,17 @@ const MusicTaste = () => {
     }
   };
 
-  // [링크 복사 함수] - 안전 장치 추가
+
+  // [링크 복사 함수]
   const handleCopyLink = async () => {
     try {
       const url = `${window.location.origin}/share/${resultCode}`;
       
+      // HTTPS 또는 로컬에서만 작동하는 clipboard API 예외처리
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(url);
         alert(lang === 'en' ? 'Link Copied!' : '링크가 복사되었습니다!');
       } else {
-        // HTTP 환경 등 clipboard API 미지원 시
         prompt(lang === 'en' ? 'Copy this link:' : '아래 링크를 복사하세요:', url);
       }
       setIsShareModalOpen(false); 
@@ -289,15 +292,18 @@ const MusicTaste = () => {
          await navigator.clipboard.writeText(url).catch(() => {}); 
       }
 
-      // 2. 이미지 Blob 생성
+      // 2. 이미지 생성
       const blob = await generateImageBlob();
-      if (!blob) throw new Error('이미지 생성 실패');
+      
+      if (!blob) {
+        throw new Error('이미지 생성 실패');
+      }
 
       const fileName = `MusicTasty_${finalResultData.name.replace(/\s+/g, '_')}.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
 
-      // 3. Web Share API 호출
-      // navigator.canShare가 있고, share가 가능한지 확인
+      // 3. 네이티브 공유 시도 (모바일 우선)
+      // navigator.share가 있고, 파일 공유(canShare)를 지원하는지 체크
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
@@ -305,28 +311,31 @@ const MusicTaste = () => {
           text: '나의 음악 취향 결과! (링크가 복사되었습니다)', 
         });
       } else {
-        // 4. 폴백: PC나 인앱브라우저 등 네이티브 공유 미지원 시 -> 이미지 저장 팝업 띄움
+        // 4. 지원하지 않는 환경(PC 등)에서는 저장 팝업 띄우기
         const imageUrl = URL.createObjectURL(blob);
         setSavedImageUrl(imageUrl);
       }
     } catch (err) {
       console.error('공유 프로세스 오류:', err);
-      // 최후의 수단: 저장 팝업
-      alert(lang === 'en'
-        ? 'Sharing is not supported on this browser. Please save the image.'
-        : '이 브라우저에서는 바로 공유가 지원되지 않습니다. 이미지를 저장해주세요.');
+      // 공유 API 호출 중 에러가 나면(취소 등), 저장 팝업으로 유도
+      try {
+          const blob = await generateImageBlob();
+          if(blob) {
+             const imageUrl = URL.createObjectURL(blob);
+             setSavedImageUrl(imageUrl);
+          }
+      } catch(e) {}
+
     } finally {
       setIsSaving(false);
       setIsShareModalOpen(false);
     }
   };
 
-  // 구분선 컴포넌트
+  // 구분선 컴포넌트 (HEX 색상 적용)
   const SectionDivider = ({ title }: { title: string }) => (
     <div className="flex items-center gap-3 mb-3 mt-1">
-      {/* Tailwind 색상(gray-300) 대신 HEX(#d1d5db) 사용 -> lab 오류 방지 */}
       <div className="flex-1 h-px border-t border-dashed border-[#d1d5db]"></div>
-      {/* 텍스트 정렬 보정 (-mt-[2px]) 및 HEX 색상 적용 */}
       <span className="shrink-0 text-[10px] font-black text-[#9ca3af] uppercase tracking-widest -mt-[2px]">{title}</span>
       <div className="flex-1 h-px border-t border-dashed border-[#d1d5db]"></div>
     </div>
@@ -337,7 +346,6 @@ const MusicTaste = () => {
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 font-sans text-white select-none relative">
       
-      {/* 상단바: 홈 버튼 + 언어 변경 */}
       <div className="absolute top-4 right-4 z-50 flex gap-2">
         {step === 99 && (
            <button onClick={() => window.location.href = '/'} className="bg-gray-800/80 backdrop-blur w-8 h-8 flex items-center justify-center rounded-full border border-gray-600 hover:bg-gray-700 transition">
@@ -407,7 +415,7 @@ const MusicTaste = () => {
         <div className="w-full max-w-sm animate-slide-up pb-10 relative z-10">
           
           {/* 영수증 컨테이너 */}
-          {/* bg-[#f8f8f4]와 text-[#1f2937] 사용으로 html2canvas 오류 방지 */}
+          {/* [중요] 배경색 #f8f8f4 및 글자색 #1f2937을 HEX로 강제 지정하여 Lab 오류 방지 */}
           <div ref={ticketRef} className="relative font-mono rounded-t-2xl shadow-[0_4px_20px_rgba(0,0,0,0.1)] bg-[#f8f8f4] text-[#1f2937]">
             
             {/* ★ 캡처 대상 영역 (ID: printable-receipt-area) ★ */}
@@ -427,7 +435,7 @@ const MusicTaste = () => {
                         <p className="text-[10px] text-[#4b5563] font-sans leading-relaxed px-1 break-keep">{finalResultData.description}</p>
                     </div>
 
-                    {/* 분석 그래프 (HEX 색상 강제 적용) */}
+                    {/* 분석 그래프 (겹침 해결: Flexbox 분리) */}
                     <div className="mb-6">
                         <SectionDivider title={t.analysis} />
                         <div className="space-y-2">
@@ -435,10 +443,15 @@ const MusicTaste = () => {
                             const values = METRIC_VALUES[idx];
                             const isLeftSelected = answers[idx] === values.leftVal;
                             return (
-                                <div key={idx} className="flex items-center justify-between py-1 border-b border-dotted border-[#e5e7eb] last:border-0">
-                                    {/* text-[#374151] 등 HEX 코드로 Tailwind 변수 대체 */}
-                                    <span className="font-bold text-[#374151] uppercase tracking-wider w-16 shrink-0 whitespace-nowrap text-left text-[10px]">{idx + 1}. {metric.label}</span>
-                                    <div className="w-full grid grid-cols-2 gap-2 ml-2">
+                                // [수정] 항목(왼쪽)과 체크박스(오른쪽)의 영역을 Flex로 확실히 분리하여 겹침 방지
+                                <div key={idx} className="flex items-center w-full py-1 border-b border-dotted border-[#e5e7eb] last:border-0">
+                                    {/* 라벨: 너비 고정 (w-20), 줄어들지 않음 (shrink-0) */}
+                                    <span className="w-20 shrink-0 font-bold text-[#374151] uppercase tracking-wider text-[10px] text-left">
+                                        {idx + 1}. {metric.label}
+                                    </span>
+                                    
+                                    {/* 체크박스 영역: 남은 공간 모두 차지 (flex-1) */}
+                                    <div className="flex-1 grid grid-cols-2 gap-1 ml-2">
                                         <div className={`flex items-center gap-1.5 ${isLeftSelected ? 'text-black font-bold' : 'text-[#9ca3af]'}`}>
                                             <span className="text-[10px] w-3 text-center shrink-0">{isLeftSelected ? '☑' : '☐'}</span>
                                             <span className="text-[10px] whitespace-nowrap">{metric.left}</span>
@@ -454,23 +467,25 @@ const MusicTaste = () => {
                         </div>
                     </div>
 
-                    {/* 테이스팅 노트 (HEX 색상 강제 적용) */}
+                    {/* 테이스팅 노트 (HEX 색상 강제) */}
                     <div className="mb-6">
                         <SectionDivider title={t.tastingNotes} />
                         <div className="flex flex-wrap justify-center gap-1.5 pt-1">
                             {finalResultData.tags.slice(0, 3).map((tag) => ( 
+                            // [중요] Tailwind 클래스 대신 HEX 코드로 직접 지정
                             <span key={tag} className="px-2 py-0.5 rounded border bg-[#faf5ff] border-[#e9d5ff] text-[#7e22ce] text-[10px] font-bold uppercase tracking-wide">#{tag}</span>
                             ))}
                         </div>
                     </div>
                 
-                    {/* 추천 아티스트 (HEX 색상 강제 적용) */}
+                    {/* 추천 아티스트 (HEX 색상 강제) */}
                     <div className="mb-2">
                         <SectionDivider title={t.headChefs} />
                         <div className="flex justify-center gap-3 pt-1">
                             {chefs && chefs.map((chef, idx) => (
                             <div key={idx} className="flex flex-col items-center gap-1 w-20">
                                 <div className="relative">
+                                {/* 배경색 HEX 적용 */}
                                 <div className="w-10 h-10 rounded-full bg-[#f3f4f6] flex items-center justify-center text-xl shadow-sm border border-[#e5e7eb] text-[#374151]">👨‍🍳</div>
                                 <span className={`absolute -bottom-1 -right-1 text-[7px] font-bold px-1 py-px rounded text-white border border-white ${chef.region === 'KR' ? 'bg-black' : 'bg-[#6b7280]'}`}>{chef.region}</span>
                                 </div>
@@ -483,7 +498,8 @@ const MusicTaste = () => {
                     </div>
                     
                     {/* Footer Logo */}
-                    <div className="mt-4 pt-3 border-t-2 border-dashed border-[#d1d5db] flex items-center justify-center gap-3 opacity-80 pb-8">
+                    {/* [중요] opacity 제거 및 HEX Border 적용 */}
+                    <div className="mt-4 pt-3 border-t-2 border-dashed border-[#d1d5db] flex items-center justify-center gap-3 pb-8">
                         <div className="w-6 h-6 flex items-center justify-center"> 
                             <img src="/logo_symbol.png" alt="Symbol" className="w-full h-full object-contain" />
                         </div>
