@@ -177,13 +177,34 @@ const MusicTaste = () => {
   
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
   const [savedImageUrl, setSavedImageUrl] = useState<string | null>(null);
+  
+  // 카카오톡 인앱 브라우저 감지용 상태
+  const [isKakaoInApp, setIsKakaoInApp] = useState(false);
 
   const ticketRef = useRef<HTMLDivElement>(null);
 
   const t = UI_TEXT[lang];
   const currentQuestions = lang === 'ko' ? QUESTIONS_KO : QUESTIONS_EN;
+
+  // [카카오톡 인앱 브라우저 탈출 로직]
+  useEffect(() => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isKakao = userAgent.includes('kakao');
+
+    if (isKakao) {
+      // Android: intent scheme을 통해 강제로 외부 브라우저(크롬 등) 호출
+      if (userAgent.includes('android')) {
+        const url = window.location.href.replace(/https?:\/\//i, '');
+        // intent 스킴 생성 (크롬으로 열기 시도, 없으면 브라우저 선택창)
+        const intentUrl = `intent://${url}#Intent;scheme=https;package=com.android.chrome;end`;
+        window.location.href = intentUrl;
+      } else {
+        // iOS: 강제 탈출 불가 -> 가이드 모달 띄우기
+        setIsKakaoInApp(true);
+      }
+    }
+  }, []);
 
   const handleSelect = (idx: number, value: DishCode) => {
     if (selectedOption !== null) return;
@@ -231,25 +252,23 @@ const MusicTaste = () => {
   const finalResultData = getResultText();
 
   // [이미지 생성 헬퍼 함수]
-  // 핵심 수정: backgroundColor를 HEX로 명시하여 Lab Color 오류 방지
   const generateImageBlob = async (): Promise<Blob | null> => {
     const targetElement = document.getElementById('printable-receipt-area');
     if (!targetElement) return null;
 
     try {
       const canvas = await html2canvas(targetElement, { 
-        backgroundColor: '#f8f8f4', // 배경색 HEX 고정 (투명X)
+        backgroundColor: '#f8f8f4',
         scale: 3, 
         useCORS: true, 
         logging: false,
         onclone: (clonedDoc) => {
             const clonedElement = clonedDoc.getElementById('printable-receipt-area');
             if (clonedElement) {
-                // 1. 너비 강제 고정으로 비율 유지
-                clonedElement.style.width = '360px';
-                // 2. 둥근 모서리 및 그림자 (이미지에서도 보이게)
+                clonedElement.style.width = '360px'; // 모바일 너비 고정
                 clonedElement.style.borderRadius = '16px 16px 0 0'; 
                 clonedElement.style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)';
+                clonedElement.style.letterSpacing = '-0.5px'; // 자간 보정
             }
         }
       });
@@ -266,7 +285,6 @@ const MusicTaste = () => {
     try {
       const url = `${window.location.origin}/share/${resultCode}`;
       
-      // HTTPS 또는 로컬에서만 작동하는 clipboard API 예외처리
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(url);
         alert(lang === 'en' ? 'Link Copied!' : '링크가 복사되었습니다!');
@@ -285,15 +303,15 @@ const MusicTaste = () => {
     if (isSaving) return;
     setIsSaving(true);
     
+    let blob: Blob | null = null;
+
     try {
-      // 1. 링크 복사 시도 (실패해도 무관)
       const url = `${window.location.origin}/share/${resultCode}`;
       if (navigator.clipboard && navigator.clipboard.writeText) {
          await navigator.clipboard.writeText(url).catch(() => {}); 
       }
 
-      // 2. 이미지 생성
-      const blob = await generateImageBlob();
+      blob = await generateImageBlob();
       
       if (!blob) {
         throw new Error('이미지 생성 실패');
@@ -302,8 +320,6 @@ const MusicTaste = () => {
       const fileName = `MusicTasty_${finalResultData.name.replace(/\s+/g, '_')}.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
 
-      // 3. 네이티브 공유 시도 (모바일 우선)
-      // navigator.share가 있고, 파일 공유(canShare)를 지원하는지 체크
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
@@ -311,20 +327,17 @@ const MusicTaste = () => {
           text: '나의 음악 취향 결과! (링크가 복사되었습니다)', 
         });
       } else {
-        // 4. 지원하지 않는 환경(PC 등)에서는 저장 팝업 띄우기
-        const imageUrl = URL.createObjectURL(blob);
-        setSavedImageUrl(imageUrl);
+        throw new Error('Native share not supported');
       }
     } catch (err) {
-      console.error('공유 프로세스 오류:', err);
-      // 공유 API 호출 중 에러가 나면(취소 등), 저장 팝업으로 유도
-      try {
-          const blob = await generateImageBlob();
-          if(blob) {
-             const imageUrl = URL.createObjectURL(blob);
-             setSavedImageUrl(imageUrl);
-          }
-      } catch(e) {}
+      console.log('네이티브 공유 실패, 이미지 저장 모달로 전환:', err);
+      
+      if (blob) {
+         const imageUrl = URL.createObjectURL(blob);
+         setSavedImageUrl(imageUrl);
+      } else {
+         alert('이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      }
 
     } finally {
       setIsSaving(false);
@@ -332,11 +345,10 @@ const MusicTaste = () => {
     }
   };
 
-  // 구분선 컴포넌트 (HEX 색상 적용)
   const SectionDivider = ({ title }: { title: string }) => (
-    <div className="flex items-center gap-3 mb-3 mt-1">
+    <div className="flex items-center gap-3 mb-4 mt-2">
       <div className="flex-1 h-px border-t border-dashed border-[#d1d5db]"></div>
-      <span className="shrink-0 text-[10px] font-black text-[#9ca3af] uppercase tracking-widest -mt-[2px]">{title}</span>
+      <span className="shrink-0 text-[10px] font-black text-[#9ca3af] uppercase tracking-widest -mt-1">{title}</span>
       <div className="flex-1 h-px border-t border-dashed border-[#d1d5db]"></div>
     </div>
   );
@@ -359,6 +371,22 @@ const MusicTaste = () => {
           <span className={lang === 'ko' ? 'text-white' : 'text-gray-500'}>KO</span><span className="text-gray-600">|</span><span className={lang === 'en' ? 'text-white' : 'text-gray-500'}>EN</span>
         </button>
       </div>
+
+      {/* 카카오톡 인앱 브라우저 가이드 모달 (iOS용) */}
+      {isKakaoInApp && (
+        <div className="fixed inset-0 z-[200] bg-black/90 flex flex-col items-end p-6 text-white font-bold animate-fade-in" onClick={() => setIsKakaoInApp(false)}>
+            <div className="text-3xl animate-bounce mb-2">↗</div>
+            <div className="text-right space-y-2">
+                <p className="text-xl text-yellow-400">Safari 브라우저로 열어주세요!</p>
+                <p className="text-sm font-normal text-gray-300">
+                    카카오톡에서는 이미지 공유/저장이<br/>
+                    제한될 수 있습니다.<br/><br/>
+                    우측 상단 <strong>[...]</strong> 버튼을 누르고<br/>
+                    <strong>[Safari로 열기]</strong>를 선택해주세요.
+                </p>
+            </div>
+        </div>
+      )}
 
       {step === 0 && (
         <div className="text-center space-y-6 animate-fade-in max-w-2xl relative">
@@ -415,42 +443,34 @@ const MusicTaste = () => {
         <div className="w-full max-w-sm animate-slide-up pb-10 relative z-10">
           
           {/* 영수증 컨테이너 */}
-          {/* [중요] 배경색 #f8f8f4 및 글자색 #1f2937을 HEX로 강제 지정하여 Lab 오류 방지 */}
           <div ref={ticketRef} className="relative font-mono rounded-t-2xl shadow-[0_4px_20px_rgba(0,0,0,0.1)] bg-[#f8f8f4] text-[#1f2937]">
             
-            {/* ★ 캡처 대상 영역 (ID: printable-receipt-area) ★ */}
+            {/* ★ 캡처 대상 영역 ★ */}
             <div id="printable-receipt-area" className="relative bg-[#f8f8f4] rounded-t-2xl">
                 
                 <div className="p-5 pb-0">
-                    {/* 영수증 헤더 */}
-                    <div className="text-center border-b-2 border-dashed border-[#d1d5db] pb-4 mb-5">
+                    <div className="text-center border-b-2 border-dashed border-[#d1d5db] pb-4 mb-8">
                         <h2 className="text-xl font-black tracking-tight uppercase">{t.ticketTitle}</h2>
                         <p className="text-[10px] text-[#6b7280] mt-1">{new Date().toLocaleDateString()}</p>
                     </div>
 
-                    {/* 결과 메인 */}
-                    <div className="text-center mb-6">
-                        <div className="text-5xl mb-3">{emoji}</div>
+                    <div className="text-center mb-8">
+                        <div className="text-6xl mb-5">{emoji}</div>
                         <h3 className="text-lg font-black uppercase leading-tight mb-2">{finalResultData.name}</h3>
                         <p className="text-[10px] text-[#4b5563] font-sans leading-relaxed px-1 break-keep">{finalResultData.description}</p>
                     </div>
 
-                    {/* 분석 그래프 (겹침 해결: Flexbox 분리) */}
-                    <div className="mb-6">
+                    <div className="mb-8">
                         <SectionDivider title={t.analysis} />
                         <div className="space-y-2">
                             {t.metrics.map((metric, idx) => {
                             const values = METRIC_VALUES[idx];
                             const isLeftSelected = answers[idx] === values.leftVal;
                             return (
-                                // [수정] 항목(왼쪽)과 체크박스(오른쪽)의 영역을 Flex로 확실히 분리하여 겹침 방지
                                 <div key={idx} className="flex items-center w-full py-1 border-b border-dotted border-[#e5e7eb] last:border-0">
-                                    {/* 라벨: 너비 고정 (w-20), 줄어들지 않음 (shrink-0) */}
                                     <span className="w-20 shrink-0 font-bold text-[#374151] uppercase tracking-wider text-[10px] text-left">
                                         {idx + 1}. {metric.label}
                                     </span>
-                                    
-                                    {/* 체크박스 영역: 남은 공간 모두 차지 (flex-1) */}
                                     <div className="flex-1 grid grid-cols-2 gap-1 ml-2">
                                         <div className={`flex items-center gap-1.5 ${isLeftSelected ? 'text-black font-bold' : 'text-[#9ca3af]'}`}>
                                             <span className="text-[10px] w-3 text-center shrink-0">{isLeftSelected ? '☑' : '☐'}</span>
@@ -467,29 +487,25 @@ const MusicTaste = () => {
                         </div>
                     </div>
 
-                    {/* 테이스팅 노트 (HEX 색상 강제) */}
-                    <div className="mb-6">
+                    <div className="mb-8">
                         <SectionDivider title={t.tastingNotes} />
                         <div className="flex flex-wrap justify-center gap-1.5 pt-1">
                             {finalResultData.tags.slice(0, 3).map((tag) => ( 
-                            // [중요] Tailwind 클래스 대신 HEX 코드로 직접 지정
-                            <span key={tag} className="px-2 py-0.5 rounded border bg-[#faf5ff] border-[#e9d5ff] text-[#7e22ce] text-[10px] font-bold uppercase tracking-wide">#{tag}</span>
+                            <span key={tag} className="flex items-center justify-center px-2 py-1 rounded border bg-[#faf5ff] border-[#e9d5ff] text-[#7e22ce] text-[10px] font-bold uppercase tracking-wide leading-none">#{tag}</span>
                             ))}
                         </div>
                     </div>
                 
-                    {/* 추천 아티스트 (HEX 색상 강제) */}
-                    <div className="mb-2">
+                    <div className="mb-4">
                         <SectionDivider title={t.headChefs} />
-                        <div className="flex justify-center gap-3 pt-1">
+                        <div className="flex justify-center gap-4 pt-2">
                             {chefs && chefs.map((chef, idx) => (
-                            <div key={idx} className="flex flex-col items-center gap-1 w-20">
+                            <div key={idx} className="flex flex-col items-center gap-2 w-20">
                                 <div className="relative">
-                                {/* 배경색 HEX 적용 */}
-                                <div className="w-10 h-10 rounded-full bg-[#f3f4f6] flex items-center justify-center text-xl shadow-sm border border-[#e5e7eb] text-[#374151]">👨‍🍳</div>
-                                <span className={`absolute -bottom-1 -right-1 text-[7px] font-bold px-1 py-px rounded text-white border border-white ${chef.region === 'KR' ? 'bg-black' : 'bg-[#6b7280]'}`}>{chef.region}</span>
+                                    <div className="w-10 h-10 rounded-full bg-[#f3f4f6] flex items-center justify-center text-xl shadow-sm border border-[#e5e7eb] text-[#374151]">👨‍🍳</div>
+                                    <span className={`absolute -bottom-1 -right-1 w-5 h-3 flex items-center justify-center text-[6px] font-bold rounded text-white border border-white ${chef.region === 'KR' ? 'bg-black' : 'bg-[#6b7280]'}`}>{chef.region}</span>
                                 </div>
-                                <div className="h-8 flex items-center justify-center w-full">
+                                <div className="h-8 flex items-start justify-center w-full">
                                     <span className="text-[10px] font-bold text-[#1f2937] text-center leading-tight break-keep">{chef.name}</span>
                                 </div>
                             </div>
@@ -497,9 +513,7 @@ const MusicTaste = () => {
                         </div>
                     </div>
                     
-                    {/* Footer Logo */}
-                    {/* [중요] opacity 제거 및 HEX Border 적용 */}
-                    <div className="mt-4 pt-3 border-t-2 border-dashed border-[#d1d5db] flex items-center justify-center gap-3 pb-8">
+                    <div className="mt-4 pt-4 border-t-2 border-dashed border-[#d1d5db] flex items-center justify-center gap-3 pb-8">
                         <div className="w-6 h-6 flex items-center justify-center"> 
                             <img src="/logo_symbol.png" alt="Symbol" className="w-full h-full object-contain" />
                         </div>
@@ -509,14 +523,12 @@ const MusicTaste = () => {
                     </div>
                 </div>
 
-                {/* 영수증 하단 찢어진 효과 */}
                 <div className="absolute bottom-[-10px] left-0 w-full h-[10px] bg-[#f8f8f4]" style={{ clipPath: 'polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)'}}></div>
             </div>
             {/* 캡처 대상 영역 끝 */}
             
           </div>
 
-          {/* 하단 버튼 그룹 */}
           <div className="mt-8 flex flex-col gap-3 px-1 relative z-20">
             <button 
                 onClick={() => router.push('/radio')} 
@@ -525,7 +537,6 @@ const MusicTaste = () => {
                 <span className="text-xl">🎧</span> {t.playBtn}
             </button>
 
-            {/* 통합 공유 버튼 */}
             <button onClick={() => setIsShareModalOpen(true)} className="w-full py-3.5 bg-white text-black rounded-xl font-bold text-sm hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-md">
                 <span className="text-xl">🔗</span> {t.shareBtn}
             </button>
@@ -533,7 +544,6 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 공유 메뉴 팝업 (리스트 형태) */}
       {isShareModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsShareModalOpen(false)}>
           <div className="w-full max-w-sm bg-[#252525] rounded-t-2xl overflow-hidden transform transition-transform duration-300 ease-out pb-4" onClick={e => e.stopPropagation()}>
@@ -572,7 +582,6 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 이미지 저장 안내 팝업 (Web Share 미지원 시 폴백) */}
       {savedImageUrl && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSavedImageUrl(null)}>
           <div className="max-w-sm w-full bg-white rounded-xl p-4 flex flex-col items-center space-y-4" onClick={e => e.stopPropagation()}>
