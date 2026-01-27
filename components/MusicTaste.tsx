@@ -203,9 +203,9 @@ const MusicTaste = () => {
     }
   }, []);
 
-  // 1. [수정] 이미지 경로 생성 (공백 제거 적용)
+  // 1. 이미지 경로 생성 (공백 제거 적용)
   const getImagePath = (code: string, currentLang: string) => {
-    // 기존: " (Eng)" -> 수정: "(Eng)" (띄어쓰기 제거)
+    // 파일명 형식: SCOF(Eng).png (띄어쓰기 없음)
     const suffix = currentLang === 'en' ? '(Eng)' : '(Kr)';
     return `/results/${code}${suffix}.png`;
   };
@@ -217,17 +217,13 @@ const MusicTaste = () => {
         setIsFileReady(false); 
         try {
           const imagePath = getImagePath(resultCode, lang);
-          console.log(`[Image Load] Requesting: ${imagePath}`);
-
           const response = await fetch(imagePath);
           
           if (!response.ok) {
-            console.error(`[Image Load Error] Status: ${response.status}, Path: ${imagePath}`);
             throw new Error(`Image fetch failed: ${response.status}`);
           }
           
           const blob = await response.blob();
-          console.log(`[Image Load] Success! Blob size: ${blob.size}`);
 
           // File 객체 생성
           const fileName = `MusicTasty_${resultCode}.png`;
@@ -339,13 +335,9 @@ const MusicTaste = () => {
     }
   };
 
-  // 3. 공유 실행 핸들러 (준비 안됐으면 안내 메시지)
   const handleInstagramShare = async () => {
-    // 파일 준비 상태 체크
     if (!isFileReady || !resultFile) {
-        // 이미지가 없어도 강제로 경로 생성 시도 (Fallback)
         const fallbackPath = getImagePath(resultCode, lang);
-        console.warn(`File not ready. Path: ${fallbackPath}`);
         
         const confirmMsg = lang === 'ko' 
             ? '이미지를 불러오지 못했습니다. 링크를 열어서 확인하시겠습니까?' 
@@ -367,12 +359,12 @@ const MusicTaste = () => {
             setIsShareModalOpen(false);
         } catch (err) {
             if ((err as Error).name !== 'AbortError') {
-                setSavedImageUrl(resultBlobUrl); // 실패시 저장 모달
+                setSavedImageUrl(resultBlobUrl); 
             }
         }
     } else {
         console.log('Native share not supported');
-        setSavedImageUrl(resultBlobUrl); // 미지원시 저장 모달
+        setSavedImageUrl(resultBlobUrl);
         setIsShareModalOpen(false);
     }
   };
@@ -382,12 +374,8 @@ const MusicTaste = () => {
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 font-sans text-white select-none relative">
       
+      {/* 1. 상단 버튼 (홈 버튼 삭제, 언어 설정만 남김) */}
       <div className="absolute top-4 right-4 z-50 flex gap-2">
-        {step === 99 && (
-           <button onClick={handleRestart} className="bg-gray-800/80 backdrop-blur w-8 h-8 flex items-center justify-center rounded-full border border-gray-600 hover:bg-gray-700 transition">
-             <span className="text-sm">🏠</span>
-           </button>
-        )}
         <button 
           onClick={() => setLang(prev => prev === 'en' ? 'ko' : 'en')}
           className="bg-gray-800/80 backdrop-blur px-3 py-1.5 rounded-full text-[10px] font-bold border border-gray-600 hover:bg-gray-700 transition flex gap-2"
@@ -460,7 +448,7 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 결과 화면 (영수증 UI 유지) */}
+      {/* 결과 화면 */}
       {step === 99 && (
         <div className="w-full max-w-sm animate-slide-up pb-10 relative z-10">
           
@@ -586,11 +574,15 @@ const MusicTaste = () => {
             </button>
 
             <div className="flex w-full gap-3">
-                <button onClick={(e) => { e.stopPropagation(); setIsShareModalOpen(true); }} className="flex-[3] py-3.5 bg-white text-black rounded-xl font-bold text-sm hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-md">
-                    <span className="text-xl">🎁</span> {t.shareBtn}
+                {/* 3. 공유 아이콘 변경 (🎁 -> 📤) */}
+                <button onClick={(e) => { e.stopPropagation(); setIsShareModalOpen(true); }} className="flex-[2] py-3.5 bg-white text-black rounded-xl font-bold text-sm hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-md">
+                    <span className="text-xl">📤</span> {t.shareBtn}
                 </button>
-                <button onClick={handleRestart} className="flex-1 py-3.5 bg-gray-800 text-gray-300 border border-gray-700 rounded-xl font-bold text-sm hover:bg-gray-700 hover:text-white transition flex items-center justify-center shadow-md">
+                
+                {/* 2. 다시하기 버튼 (아이콘 + 텍스트 추가) */}
+                <button onClick={handleRestart} className="flex-1 py-3.5 bg-gray-800 text-gray-300 border border-gray-700 rounded-xl font-bold text-sm hover:bg-gray-700 hover:text-white transition flex items-center justify-center gap-2 shadow-md">
                     <span className="text-xl">↻</span>
+                    <span>{t.retakeBtn}</span>
                 </button>
             </div>
           </div>
@@ -628,7 +620,7 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 저장 모달 (Fallback용) */}
+      {/* 저장 모달 */}
       {savedImageUrl && (
         <div className="fixed inset-0 z-[5010] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSavedImageUrl(null)}>
           <div className="max-w-sm w-full bg-white rounded-xl p-6 flex flex-col items-center space-y-6" onClick={e => e.stopPropagation()}>
