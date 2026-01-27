@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import html2canvas from 'html2canvas';
 import { RECIPES, RECIPES_KO, DishCode, ChefInfo } from '@/constants/dishData';
 
 // [타입 정의]
@@ -121,6 +120,7 @@ const UI_TEXT = {
     playBtn: "Listen Playlist",
     homeBtn: "Home",
     shareBtn: "Share Result",
+    retakeBtn: "Retake", // [추가]
     shareMenuTitle: "Share",
     copyLink: "Copy Link",
     shareImage: "Share Image (Instagram, etc.)",
@@ -145,6 +145,7 @@ const UI_TEXT = {
     playBtn: "플레이리스트 바로 듣기",
     homeBtn: "처음으로",
     shareBtn: "결과 공유하기",
+    retakeBtn: "다시하기", // [추가]
     shareMenuTitle: "공유하기",
     copyLink: "링크 복사",
     shareImage: "이미지로 공유 (인스타그램 등)",
@@ -170,7 +171,7 @@ const MusicTaste = () => {
   const [lang, setLang] = useState<'en' | 'ko'>('en'); 
   const [step, setStep] = useState(0); 
   const [answers, setAnswers] = useState<DishCode[]>([]);
-  const [resultCode, setResultCode] = useState<string>('BCOF');
+  const [resultCode, setResultCode] = useState<string>('default');
   const [chefs, setChefs] = useState<ChefInfo[]>([]);
   const [emoji, setEmoji] = useState<string>('🍽️');
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -180,12 +181,9 @@ const MusicTaste = () => {
   const [savedImageUrl, setSavedImageUrl] = useState<string | null>(null);
   const [isKakaoInApp, setIsKakaoInApp] = useState(false);
 
-  const ticketRef = useRef<HTMLDivElement>(null);
-
   const t = UI_TEXT[lang];
   const currentQuestions = lang === 'ko' ? QUESTIONS_KO : QUESTIONS_EN;
 
-  // 카카오톡 인앱 브라우저 감지 및 처리
   useEffect(() => {
     const userAgent = navigator.userAgent.toLowerCase();
     if (userAgent.includes('kakao')) {
@@ -194,7 +192,7 @@ const MusicTaste = () => {
         const intentUrl = `intent://${url}#Intent;scheme=https;package=com.android.chrome;end`;
         window.location.href = intentUrl;
       } else {
-        setIsKakaoInApp(true); // iOS는 가이드 표시
+        setIsKakaoInApp(true);
       }
     }
   }, []);
@@ -205,7 +203,7 @@ const MusicTaste = () => {
     setTimeout(() => {
         const newAnswers = [...answers, value];
         setAnswers(newAnswers);
-        if (step < currentQuestions.length) setStep(step + 1);
+        if (step < 4) setStep(step + 1);
         else setStep(99);
         setSelectedOption(null);
     }, 400); 
@@ -214,12 +212,21 @@ const MusicTaste = () => {
   const handleBack = () => {
     if (step === 0) return;
     if (step === 99) {
-      setStep(currentQuestions.length);
+      setStep(4);
       setAnswers(prev => prev.slice(0, -1));
       return;
     }
     setStep(prev => prev - 1);
     setAnswers(prev => prev.slice(0, -1));
+  };
+
+  // [추가] 처음으로 돌아가기 (초기화)
+  const handleRestart = () => {
+    setStep(0);
+    setAnswers([]);
+    setResultCode('default');
+    setSelectedOption(null);
+    window.scrollTo(0, 0);
   };
 
   const getRandomChefs = (allChefs: ChefInfo[]) => {
@@ -244,31 +251,29 @@ const MusicTaste = () => {
   
   const finalResultData = getResultText();
 
-  // [이미지 생성 함수] - Lab Color 오류 방지 (Pure Inline Styles)
-  const generateImageBlob = async (): Promise<Blob | null> => {
-    const targetElement = document.getElementById('printable-receipt-area');
-    if (!targetElement) return null;
+  // [구분선 컴포넌트]
+  const SectionDivider = ({ title }: { title: string }) => (
+    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', marginTop: '8px' }}>
+      <div style={{ flex: 1, height: '1px', borderTop: '1px dashed #d1d5db' }}></div>
+      <span style={{ flexShrink: 0, fontSize: '10px', fontWeight: 900, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '-2px', paddingLeft: '12px', paddingRight: '12px' }}>{title}</span>
+      <div style={{ flex: 1, height: '1px', borderTop: '1px dashed #d1d5db' }}></div>
+    </div>
+  );
 
+  const getImagePath = () => {
+    const suffix = lang === 'en' ? ' (Eng)' : ' (Kr)';
+    return `/results/${resultCode}${suffix}.png`;
+  };
+
+  const getStaticImageBlob = async (): Promise<Blob | null> => {
+    const imagePath = getImagePath();
     try {
-      const canvas = await html2canvas(targetElement, { 
-        backgroundColor: '#f8f8f4', // HEX color 필수
-        scale: 3, 
-        useCORS: true, 
-        logging: false,
-        onclone: (clonedDoc) => {
-            const clonedElement = clonedDoc.getElementById('printable-receipt-area');
-            if (clonedElement) {
-                clonedElement.style.width = '375px'; 
-                clonedElement.style.borderRadius = '16px 16px 0 0'; 
-                clonedElement.style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)';
-                clonedElement.style.letterSpacing = '0px'; 
-            }
-        }
-      });
-      return new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+        const response = await fetch(imagePath);
+        if (!response.ok) throw new Error('Image not found');
+        return await response.blob();
     } catch (e) {
-      console.error("Canvas generation failed", e);
-      return null;
+        console.error("Static image fetch failed:", e);
+        return null;
     }
   };
 
@@ -298,16 +303,15 @@ const MusicTaste = () => {
     if (isSaving) return;
     setIsSaving(true);
     
-    let blob: Blob | null = null;
-
     try {
-      blob = await generateImageBlob();
+      const blob = await getStaticImageBlob();
       
       if (!blob) {
-        throw new Error('이미지 생성 실패');
+        alert(lang === 'en' ? 'Image loading...' : '이미지를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+        return; 
       }
 
-      const fileName = `MusicTasty_${finalResultData.name.replace(/\s+/g, '_')}.png`;
+      const fileName = `MusicTasty_${resultCode}_${lang}.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
 
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -321,28 +325,14 @@ const MusicTaste = () => {
       }
     } catch (err) {
       console.log('네이티브 공유 불가 -> 이미지 저장 모달로 전환');
-      if (blob) {
-         const imageUrl = URL.createObjectURL(blob);
-         setSavedImageUrl(imageUrl);
-      } else {
-         alert('이미지 생성 중 오류가 발생했습니다.');
-      }
+      setSavedImageUrl(getImagePath());
     } finally {
       setIsSaving(false);
       setIsShareModalOpen(false);
     }
   };
 
-  // [구분선 컴포넌트: Inline Style 적용]
-  const SectionDivider = ({ title }: { title: string }) => (
-    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', marginTop: '8px' }}>
-      <div style={{ flex: 1, height: '1px', borderTop: '1px dashed #d1d5db' }}></div>
-      <span style={{ flexShrink: 0, fontSize: '10px', fontWeight: 900, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '-2px', paddingLeft: '12px', paddingRight: '12px' }}>{title}</span>
-      <div style={{ flex: 1, height: '1px', borderTop: '1px dashed #d1d5db' }}></div>
-    </div>
-  );
-
-  const progress = (step / currentQuestions.length) * 100;
+  const progress = (step / 4) * 100;
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 font-sans text-white select-none relative">
@@ -350,7 +340,7 @@ const MusicTaste = () => {
       {/* 상단 버튼 */}
       <div className="absolute top-4 right-4 z-50 flex gap-2">
         {step === 99 && (
-           <button onClick={() => window.location.href = '/'} className="bg-gray-800/80 backdrop-blur w-8 h-8 flex items-center justify-center rounded-full border border-gray-600 hover:bg-gray-700 transition">
+           <button onClick={handleRestart} className="bg-gray-800/80 backdrop-blur w-8 h-8 flex items-center justify-center rounded-full border border-gray-600 hover:bg-gray-700 transition">
              <span className="text-sm">🏠</span>
            </button>
         )}
@@ -362,14 +352,13 @@ const MusicTaste = () => {
         </button>
       </div>
 
-      {/* 카카오 인앱 가이드 */}
       {isKakaoInApp && (
         <div className="fixed inset-0 z-[200] bg-black/90 flex flex-col items-end p-6 text-white font-bold animate-fade-in" onClick={() => setIsKakaoInApp(false)}>
             <div className="text-3xl animate-bounce mb-2">↗</div>
             <div className="text-right space-y-2">
                 <p className="text-xl text-yellow-400">Safari 브라우저로 열어주세요!</p>
                 <p className="text-sm font-normal text-gray-300">
-                    카카오톡에서는 기능이 제한됩니다.<br/>
+                    원활한 공유를 위해<br/>
                     우측 상단 <strong>[...]</strong> 버튼을 누르고<br/>
                     <strong>[Safari로 열기]</strong>를 선택해주세요.
                 </p>
@@ -429,21 +418,17 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 결과 화면 (영수증) */}
+      {/* 결과 화면 */}
       {step === 99 && (
         <div className="w-full max-w-sm animate-slide-up pb-10 relative z-10">
           
-          {/* ★ 캡처 대상 영역 (ID: printable-receipt-area) ★ */}
-          {/* Tailwind 사용 X -> Inline Style로 100% 교체하여 Lab 오류 및 정렬 깨짐 방지 */}
           <div 
-            ref={ticketRef}
             id="printable-receipt-area" 
             className="relative rounded-t-2xl font-mono"
             style={{ 
                 backgroundColor: '#f8f8f4', 
                 color: '#1f2937', 
-                boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                overflow: 'hidden'
+                filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))', 
             }}
           >
                 <div style={{ padding: '24px', paddingBottom: '0' }}>
@@ -461,27 +446,25 @@ const MusicTaste = () => {
                     </div>
 
                     {/* Taste Graph */}
-                    <div style={{ marginBottom: '40px' }}>
+                    <div style={{ marginBottom: '24px' }}>
                         <SectionDivider title={t.analysis} />
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                             {t.metrics.map((metric, idx) => {
                             const values = METRIC_VALUES[idx];
                             const isLeftSelected = answers[idx] === values.leftVal;
                             return (
-                                <div key={idx} style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '6px 0', borderBottom: '1px dotted #e5e7eb',   }}>
+                                <div key={idx} style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '6px 0', borderBottom: '1px dotted #e5e7eb' }}>
                                     {/* Label */}
-                                    <span style={{ width: '80px', flexShrink: 0, fontWeight: 'bold', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px', textAlign: 'left', paddingLeft: '8px' }}>
+                                    <span style={{ width: '80px', flexShrink: 0, fontWeight: 'bold', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px', textAlign: 'left' }}>
                                         {idx + 1}. {metric.label}
                                     </span>
                                     
                                     {/* Checkboxes Wrapper */}
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '100px' }}>
-                                        {/* Left Option */}
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '24px' }}>
                                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', color: isLeftSelected ? '#000000' : '#9ca3af', fontWeight: isLeftSelected ? 'bold' : 'normal' }}>
                                             <span style={{ fontSize: '12px', marginRight: '6px', lineHeight: 1 }}>{isLeftSelected ? '☑' : '☐'}</span>
                                             <span style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>{metric.left}</span>
                                         </div>
-                                        {/* Right Option */}
                                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', color: !isLeftSelected ? '#000000' : '#9ca3af', fontWeight: !isLeftSelected ? 'bold' : 'normal' }}>
                                             <span style={{ fontSize: '12px', marginRight: '6px', lineHeight: 1 }}>{!isLeftSelected ? '☑' : '☐'}</span>
                                             <span style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>{metric.right}</span>
@@ -494,9 +477,9 @@ const MusicTaste = () => {
                     </div>
 
                     {/* Flavor Notes */}
-                    <div style={{ marginBottom: '40px' }}>
+                    <div style={{ marginBottom: '24px' }}>
                         <SectionDivider title={t.tastingNotes} />
-                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', paddingTop: '4px' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', paddingTop: '2px' }}>
                             {finalResultData.tags.slice(0, 3).map((tag) => ( 
                             <span key={tag} style={{ 
                                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '24px', 
@@ -550,15 +533,18 @@ const MusicTaste = () => {
                     </div>
                 </div>
 
-                {/* Jagged Edge */}
+                {/* Jagged Edge (종이 찢어진 효과) */}
                 <div style={{ 
-                    position: 'absolute', bottom: '-10px', left: 0, width: '100%', height: '10px', backgroundColor: '#f8f8f4',
+                    position: 'absolute', bottom: '-10px', left: 0, width: '100%', height: '10px', 
+                    backgroundColor: '#f8f8f4', 
                     clipPath: 'polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)' 
                 }}></div>
           </div>
 
-          {/* 하단 버튼 */}
+          {/* 하단 버튼 영역 수정 */}
           <div className="mt-8 flex flex-col gap-3 px-1 relative z-20">
+            
+            {/* 1. 플레이리스트 듣기 버튼 (가로 100%) */}
             <button 
                 onClick={() => router.push('/radio')} 
                 className="w-full py-4 bg-neon-gradient text-white rounded-xl font-bold text-base shadow-lg shadow-purple-900/30 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
@@ -566,9 +552,18 @@ const MusicTaste = () => {
                 <span className="text-xl">🎧</span> {t.playBtn}
             </button>
 
-            <button onClick={() => setIsShareModalOpen(true)} className="w-full py-3.5 bg-white text-black rounded-xl font-bold text-sm hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-md">
-                <span className="text-xl">🔗</span> {t.shareBtn}
-            </button>
+            {/* 2. 공유하기 & 다시하기 버튼 (한 줄, 3:1 비율) */}
+            <div className="flex w-full gap-3">
+                {/* 공유하기 (75% 비율) */}
+                <button onClick={() => setIsShareModalOpen(true)} className="flex-[3] py-3.5 bg-white text-black rounded-xl font-bold text-sm hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-md">
+                    <span className="text-xl">🔗</span> {t.shareBtn}
+                </button>
+                
+                {/* 다시하기 (25% 비율) */}
+                <button onClick={handleRestart} className="flex-1 py-3.5 bg-gray-800 text-gray-300 border border-gray-700 rounded-xl font-bold text-sm hover:bg-gray-700 hover:text-white transition flex items-center justify-center shadow-md">
+                    <span className="text-xl">↻</span>
+                </button>
+            </div>
           </div>
         </div>
       )}
@@ -576,7 +571,7 @@ const MusicTaste = () => {
       {/* 공유 모달 */}
       {isShareModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsShareModalOpen(false)}>
-          <div className="w-full max-w-sm bg-[#252525] rounded-t-2xl overflow-hidden transform transition-transform duration-300 ease-out pb-4" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-sm bg-[#252525] rounded-t-2xl overflow-hidden pb-4" onClick={e => e.stopPropagation()}>
             <div className="p-4 text-center border-b border-gray-700/50 relative">
                <h3 className="text-white font-bold text-base">{t.shareMenuTitle}</h3>
                <button onClick={() => setIsShareModalOpen(false)} className="absolute right-4 top-4 text-gray-400 hover:text-white">✕</button>
