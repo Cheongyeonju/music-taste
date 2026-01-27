@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-// [수정] html2canvas 제거 (정적 이미지 사용으로 변경하여 안정성 확보)
 import { RECIPES, RECIPES_KO, DishCode, ChefInfo } from '@/constants/dishData';
 
 // [타입 정의]
@@ -183,7 +182,10 @@ const MusicTaste = () => {
   const [savedImageUrl, setSavedImageUrl] = useState<string | null>(null);
   const [isKakaoInApp, setIsKakaoInApp] = useState(false);
 
-  const ticketRef = useRef<HTMLDivElement>(null);
+  // 이미지 로딩 상태 확인용
+  const [isFileReady, setIsFileReady] = useState(false);
+  const [resultFile, setResultFile] = useState<File | null>(null);
+  const [resultBlobUrl, setResultBlobUrl] = useState<string | null>(null);
 
   const t = UI_TEXT[lang];
   const currentQuestions = lang === 'ko' ? QUESTIONS_KO : QUESTIONS_EN;
@@ -200,6 +202,55 @@ const MusicTaste = () => {
       }
     }
   }, []);
+
+  // 1. [수정] 이미지 경로 생성 (공백 제거 적용)
+  const getImagePath = (code: string, currentLang: string) => {
+    // 기존: " (Eng)" -> 수정: "(Eng)" (띄어쓰기 제거)
+    const suffix = currentLang === 'en' ? '(Eng)' : '(Kr)';
+    return `/results/${code}${suffix}.png`;
+  };
+
+  // 2. 이미지 사전 로드 및 에러 핸들링
+  useEffect(() => {
+    if (step === 99 && resultCode && resultCode !== 'default') {
+      const prepareImage = async () => {
+        setIsFileReady(false); 
+        try {
+          const imagePath = getImagePath(resultCode, lang);
+          console.log(`[Image Load] Requesting: ${imagePath}`);
+
+          const response = await fetch(imagePath);
+          
+          if (!response.ok) {
+            console.error(`[Image Load Error] Status: ${response.status}, Path: ${imagePath}`);
+            throw new Error(`Image fetch failed: ${response.status}`);
+          }
+          
+          const blob = await response.blob();
+          console.log(`[Image Load] Success! Blob size: ${blob.size}`);
+
+          // File 객체 생성
+          const fileName = `MusicTasty_${resultCode}.png`;
+          const file = new File([blob], fileName, { type: 'image/png' });
+          setResultFile(file);
+
+          // Blob URL 생성
+          const blobUrl = URL.createObjectURL(blob);
+          setResultBlobUrl(blobUrl);
+          
+          setIsFileReady(true);
+        } catch (e) {
+          console.error("[Prepare Image Failed]", e);
+          setIsFileReady(false);
+        }
+      };
+      prepareImage();
+    }
+
+    return () => {
+      if (resultBlobUrl) URL.revokeObjectURL(resultBlobUrl);
+    };
+  }, [step, resultCode, lang]);
 
   const handleSelect = (idx: number, value: DishCode) => {
     if (selectedOption !== null) return;
@@ -228,6 +279,10 @@ const MusicTaste = () => {
     setStep(0);
     setAnswers([]);
     setResultCode('default');
+    setResultFile(null);
+    if (resultBlobUrl) URL.revokeObjectURL(resultBlobUrl);
+    setResultBlobUrl(null);
+    setIsFileReady(false);
     setSelectedOption(null);
     window.scrollTo(0, 0);
   };
@@ -254,7 +309,6 @@ const MusicTaste = () => {
   
   const finalResultData = getResultText();
 
-  // [구분선 컴포넌트]
   const SectionDivider = ({ title }: { title: string }) => (
     <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', marginTop: '8px' }}>
       <div style={{ flex: 1, height: '1px', borderTop: '1px dashed #d1d5db' }}></div>
@@ -263,26 +317,6 @@ const MusicTaste = () => {
     </div>
   );
 
-  // [수정] 정적 이미지 경로 생성 함수 (html2canvas 대체)
-  const getImagePath = () => {
-    const suffix = lang === 'en' ? ' (Eng)' : ' (Kr)';
-    return `/results/${resultCode}${suffix}.png`;
-  };
-
-  // [수정] 정적 이미지 Fetch 함수 (서버에 있는 이미지 가져오기)
-  const getStaticImageBlob = async (): Promise<Blob | null> => {
-    const imagePath = getImagePath();
-    try {
-        const response = await fetch(imagePath);
-        if (!response.ok) throw new Error('Image not found');
-        return await response.blob();
-    } catch (e) {
-        console.error("Static image fetch failed:", e);
-        return null;
-    }
-  };
-
-  // [링크 복사 함수]
   const handleCopyLink = async () => {
     try {
       const url = `${window.location.origin}/share/${resultCode}`;
@@ -305,38 +339,41 @@ const MusicTaste = () => {
     }
   };
 
-  // [수정] 인스타그램/네이티브 공유 함수 (정적 이미지 사용)
+  // 3. 공유 실행 핸들러 (준비 안됐으면 안내 메시지)
   const handleInstagramShare = async () => {
-    if (isSaving) return;
-    setIsSaving(true);
-    
-    try {
-      // html2canvas 대신 정적 이미지 Blob 가져오기
-      const blob = await getStaticImageBlob();
-      
-      if (!blob) {
-        alert(lang === 'en' ? 'Image loading... Please wait.' : '이미지를 불러오는 중입니다... 잠시 후 다시 시도해주세요.');
-        return; 
-      }
+    // 파일 준비 상태 체크
+    if (!isFileReady || !resultFile) {
+        // 이미지가 없어도 강제로 경로 생성 시도 (Fallback)
+        const fallbackPath = getImagePath(resultCode, lang);
+        console.warn(`File not ready. Path: ${fallbackPath}`);
+        
+        const confirmMsg = lang === 'ko' 
+            ? '이미지를 불러오지 못했습니다. 링크를 열어서 확인하시겠습니까?' 
+            : 'Failed to load image. Open image link?';
+            
+        if(confirm(confirmMsg)) {
+            window.open(fallbackPath, '_blank');
+        }
+        return;
+    }
 
-      const fileName = `MusicTasty_${resultCode}_${lang}.png`;
-      const file = new File([blob], fileName, { type: 'image/png' });
-
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: 'Music Tasty Result',
-          text: '나의 음악 취향 결과!', 
-        });
-      } else {
-        throw new Error('Native share not supported');
-      }
-    } catch (err) {
-      console.log('네이티브 공유 불가 -> 이미지 저장 모달로 전환');
-      setSavedImageUrl(getImagePath()); // Blob 생성 실패 시 이미지 경로 직접 사용
-    } finally {
-      setIsSaving(false);
-      setIsShareModalOpen(false);
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [resultFile] })) {
+        try {
+            await navigator.share({
+                files: [resultFile],
+                title: 'Music Tasty Result',
+                text: lang === 'ko' ? '나의 음악 취향 결과!' : 'My Music Tasty Result!', 
+            });
+            setIsShareModalOpen(false);
+        } catch (err) {
+            if ((err as Error).name !== 'AbortError') {
+                setSavedImageUrl(resultBlobUrl); // 실패시 저장 모달
+            }
+        }
+    } else {
+        console.log('Native share not supported');
+        setSavedImageUrl(resultBlobUrl); // 미지원시 저장 모달
+        setIsShareModalOpen(false);
     }
   };
 
@@ -345,7 +382,6 @@ const MusicTaste = () => {
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 font-sans text-white select-none relative">
       
-      {/* 상단 버튼 */}
       <div className="absolute top-4 right-4 z-50 flex gap-2">
         {step === 99 && (
            <button onClick={handleRestart} className="bg-gray-800/80 backdrop-blur w-8 h-8 flex items-center justify-center rounded-full border border-gray-600 hover:bg-gray-700 transition">
@@ -374,7 +410,6 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 인트로 */}
       {step === 0 && (
         <div className="text-center space-y-6 animate-fade-in max-w-2xl relative">
           <div className="inline-block p-4 rounded-full bg-gray-800 border border-gray-700 mb-6 shadow-xl relative overflow-visible">
@@ -393,7 +428,6 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 질문 진행 */}
       {step >= 1 && step <= 4 && (
         <div className="w-full max-w-lg space-y-4 animate-slide-up relative">
           <div className="flex items-center justify-between mb-2">
@@ -426,7 +460,7 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 결과 화면 (영수증) */}
+      {/* 결과 화면 (영수증 UI 유지) */}
       {step === 99 && (
         <div className="w-full max-w-sm animate-slide-up pb-10 relative z-10">
           
@@ -462,12 +496,7 @@ const MusicTaste = () => {
                             const isLeftSelected = answers[idx] === values.leftVal;
                             return (
                                 <div key={idx} style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '6px 0', borderBottom: '1px dotted #e5e7eb' }}>
-                                    {/* Label */}
-                                    <span style={{ width: '80px', flexShrink: 0, fontWeight: 'bold', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px', textAlign: 'left' }}>
-                                        {idx + 1}. {metric.label}
-                                    </span>
-                                    
-                                    {/* Checkboxes */}
+                                    <span style={{ width: '80px', flexShrink: 0, fontWeight: 'bold', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px', textAlign: 'left' }}>{idx + 1}. {metric.label}</span>
                                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '24px' }}>
                                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', color: isLeftSelected ? '#000000' : '#9ca3af', fontWeight: isLeftSelected ? 'bold' : 'normal' }}>
                                             <span style={{ fontSize: '12px', marginRight: '6px', lineHeight: 1 }}>{isLeftSelected ? '☑' : '☐'}</span>
@@ -494,9 +523,7 @@ const MusicTaste = () => {
                                 padding: '0 12px', borderRadius: '4px', border: '1px solid #e9d5ff', 
                                 backgroundColor: '#faf5ff', color: '#7e22ce', fontSize: '10px', 
                                 fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.025em' 
-                            }}>
-                                #{tag}
-                            </span>
+                            }}>#{tag}</span>
                             ))}
                         </div>
                     </div>
@@ -551,7 +578,6 @@ const MusicTaste = () => {
 
           {/* 하단 버튼 영역 */}
           <div className="mt-8 flex flex-col gap-3 px-1 relative z-20">
-            {/* Play Button */}
             <button 
                 onClick={() => router.push('/radio')} 
                 className="w-full py-4 bg-neon-gradient text-white rounded-xl font-bold text-base shadow-lg shadow-purple-900/30 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
@@ -559,9 +585,7 @@ const MusicTaste = () => {
                 <span className="text-xl">🎧</span> {t.playBtn}
             </button>
 
-            {/* Share & Retake Buttons */}
             <div className="flex w-full gap-3">
-                {/* [핵심] 공유 모달 열기 버튼 (e.stopPropagation 필수) */}
                 <button onClick={(e) => { e.stopPropagation(); setIsShareModalOpen(true); }} className="flex-[3] py-3.5 bg-white text-black rounded-xl font-bold text-sm hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-md">
                     <span className="text-xl">🎁</span> {t.shareBtn}
                 </button>
@@ -589,10 +613,9 @@ const MusicTaste = () => {
                     <span className="text-white font-bold text-sm">{t.copyLink}</span>
                 </button>
                 
-                {/* [핵심] 이미지 공유 버튼: 정적 이미지(getStaticImageBlob) 사용 */}
-                <button onClick={handleInstagramShare} disabled={isSaving} className="flex items-center gap-3 p-5 hover:bg-gray-700/50 transition text-left active:bg-gray-700">
+                <button onClick={handleInstagramShare} className="flex items-center gap-3 p-5 hover:bg-gray-700/50 transition text-left active:bg-gray-700">
                     <div className="w-10 h-10 relative flex items-center justify-center">
-                        {isSaving ? (
+                        {!isFileReady ? (
                             <span className="text-xl animate-spin">⏳</span>
                         ) : (
                              <Image src="/Instagram_logo.png" alt="Instagram" fill className="object-contain p-1" unoptimized />
@@ -605,7 +628,7 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 저장 모달 */}
+      {/* 저장 모달 (Fallback용) */}
       {savedImageUrl && (
         <div className="fixed inset-0 z-[5010] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSavedImageUrl(null)}>
           <div className="max-w-sm w-full bg-white rounded-xl p-6 flex flex-col items-center space-y-6" onClick={e => e.stopPropagation()}>
