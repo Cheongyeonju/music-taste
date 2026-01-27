@@ -120,7 +120,6 @@ const UI_TEXT = {
     playBtn: "Listen Playlist",
     homeBtn: "Home",
     shareBtn: "Share Result",
-    retakeBtn: "Retake", // [추가]
     shareMenuTitle: "Share",
     copyLink: "Copy Link",
     shareImage: "Share Image (Instagram, etc.)",
@@ -145,7 +144,6 @@ const UI_TEXT = {
     playBtn: "플레이리스트 바로 듣기",
     homeBtn: "처음으로",
     shareBtn: "결과 공유하기",
-    retakeBtn: "다시하기", // [추가]
     shareMenuTitle: "공유하기",
     copyLink: "링크 복사",
     shareImage: "이미지로 공유 (인스타그램 등)",
@@ -176,6 +174,7 @@ const MusicTaste = () => {
   const [emoji, setEmoji] = useState<string>('🍽️');
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   
+  // 모달 및 공유 상태 관리
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedImageUrl, setSavedImageUrl] = useState<string | null>(null);
@@ -220,7 +219,6 @@ const MusicTaste = () => {
     setAnswers(prev => prev.slice(0, -1));
   };
 
-  // [추가] 처음으로 돌아가기 (초기화)
   const handleRestart = () => {
     setStep(0);
     setAnswers([]);
@@ -260,11 +258,13 @@ const MusicTaste = () => {
     </div>
   );
 
+  // [이미지 경로 생성]
   const getImagePath = () => {
     const suffix = lang === 'en' ? ' (Eng)' : ' (Kr)';
     return `/results/${resultCode}${suffix}.png`;
   };
 
+  // [정적 이미지 Fetch]
   const getStaticImageBlob = async (): Promise<Blob | null> => {
     const imagePath = getImagePath();
     try {
@@ -299,6 +299,7 @@ const MusicTaste = () => {
     }
   };
 
+  // [네이티브 공유 기능] - 정적 이미지 사용
   const handleInstagramShare = async () => {
     if (isSaving) return;
     setIsSaving(true);
@@ -418,7 +419,7 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 결과 화면 */}
+      {/* 결과 화면 (영수증) */}
       {step === 99 && (
         <div className="w-full max-w-sm animate-slide-up pb-10 relative z-10">
           
@@ -446,7 +447,7 @@ const MusicTaste = () => {
                     </div>
 
                     {/* Taste Graph */}
-                    <div style={{ marginBottom: '24px' }}>
+                    <div style={{ marginBottom: '40px' }}>
                         <SectionDivider title={t.analysis} />
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                             {t.metrics.map((metric, idx) => {
@@ -459,7 +460,7 @@ const MusicTaste = () => {
                                         {idx + 1}. {metric.label}
                                     </span>
                                     
-                                    {/* Checkboxes Wrapper */}
+                                    {/* Checkboxes */}
                                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '24px' }}>
                                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', color: isLeftSelected ? '#000000' : '#9ca3af', fontWeight: isLeftSelected ? 'bold' : 'normal' }}>
                                             <span style={{ fontSize: '12px', marginRight: '6px', lineHeight: 1 }}>{isLeftSelected ? '☑' : '☐'}</span>
@@ -477,9 +478,9 @@ const MusicTaste = () => {
                     </div>
 
                     {/* Flavor Notes */}
-                    <div style={{ marginBottom: '24px' }}>
+                    <div style={{ marginBottom: '40px' }}>
                         <SectionDivider title={t.tastingNotes} />
-                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', paddingTop: '2px' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', paddingTop: '4px' }}>
                             {finalResultData.tags.slice(0, 3).map((tag) => ( 
                             <span key={tag} style={{ 
                                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '24px', 
@@ -496,7 +497,7 @@ const MusicTaste = () => {
                     {/* Similar Artists */}
                     <div style={{ marginBottom: '24px' }}>
                         <SectionDivider title={t.headChefs} />
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', paddingTop: '0px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', paddingTop: '12px' }}>
                             {chefs && chefs.map((chef, idx) => (
                             <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '72px' }}>
                                 <div style={{ position: 'relative', marginBottom: '8px' }}>
@@ -533,7 +534,7 @@ const MusicTaste = () => {
                     </div>
                 </div>
 
-                {/* Jagged Edge (종이 찢어진 효과) */}
+                {/* Jagged Edge */}
                 <div style={{ 
                     position: 'absolute', bottom: '-10px', left: 0, width: '100%', height: '10px', 
                     backgroundColor: '#f8f8f4', 
@@ -541,10 +542,9 @@ const MusicTaste = () => {
                 }}></div>
           </div>
 
-          {/* 하단 버튼 영역 수정 */}
+          {/* 하단 버튼 영역 */}
           <div className="mt-8 flex flex-col gap-3 px-1 relative z-20">
-            
-            {/* 1. 플레이리스트 듣기 버튼 (가로 100%) */}
+            {/* Play Button */}
             <button 
                 onClick={() => router.push('/radio')} 
                 className="w-full py-4 bg-neon-gradient text-white rounded-xl font-bold text-base shadow-lg shadow-purple-900/30 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
@@ -552,14 +552,11 @@ const MusicTaste = () => {
                 <span className="text-xl">🎧</span> {t.playBtn}
             </button>
 
-            {/* 2. 공유하기 & 다시하기 버튼 (한 줄, 3:1 비율) */}
+            {/* Share & Retake Buttons */}
             <div className="flex w-full gap-3">
-                {/* 공유하기 (75% 비율) */}
                 <button onClick={() => setIsShareModalOpen(true)} className="flex-[3] py-3.5 bg-white text-black rounded-xl font-bold text-sm hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-md">
                     <span className="text-xl">🔗</span> {t.shareBtn}
                 </button>
-                
-                {/* 다시하기 (25% 비율) */}
                 <button onClick={handleRestart} className="flex-1 py-3.5 bg-gray-800 text-gray-300 border border-gray-700 rounded-xl font-bold text-sm hover:bg-gray-700 hover:text-white transition flex items-center justify-center shadow-md">
                     <span className="text-xl">↻</span>
                 </button>
@@ -568,7 +565,7 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 공유 모달 */}
+      {/* 공유 모달 (복원됨) */}
       {isShareModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsShareModalOpen(false)}>
           <div className="w-full max-w-sm bg-[#252525] rounded-t-2xl overflow-hidden pb-4" onClick={e => e.stopPropagation()}>
@@ -598,7 +595,7 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 저장 모달 */}
+      {/* 저장 모달 (Static Image 사용) */}
       {savedImageUrl && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSavedImageUrl(null)}>
           <div className="max-w-sm w-full bg-white rounded-xl p-6 flex flex-col items-center space-y-6" onClick={e => e.stopPropagation()}>
