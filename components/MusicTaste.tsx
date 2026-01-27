@@ -335,10 +335,10 @@ const MusicTaste = () => {
     }
   };
 
-  const handleInstagramShare = async () => {
+const handleInstagramShare = async () => {
+    // 1. 파일 준비 확인
     if (!isFileReady || !resultFile) {
         const fallbackPath = getImagePath(resultCode, lang);
-        
         const confirmMsg = lang === 'ko' 
             ? '이미지를 불러오지 못했습니다. 링크를 열어서 확인하시겠습니까?' 
             : 'Failed to load image. Open image link?';
@@ -349,20 +349,33 @@ const MusicTaste = () => {
         return;
     }
 
+    // 2. 공유할 링크 생성 (도메인)
+    const shareUrl = window.location.origin; 
+
+    // 3. Web Share API 호출
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [resultFile] })) {
         try {
             await navigator.share({
-                files: [resultFile],
+                files: [resultFile], // 이미지 파일
                 title: 'Music Tasty Result',
-                text: lang === 'ko' ? '나의 음악 취향 결과!' : 'My Music Tasty Result!', 
+                
+                // ★ [핵심] 텍스트에 링크 추가 (\n\n으로 줄바꿈)
+                text: (lang === 'ko' 
+                  ? '나의 음악 취향 결과! 🍽️\n테스트 하러 가기 👇\n' 
+                  : 'My Music Tasty Result! 🍽️\nTry it now 👇\n') + shareUrl,
+                
+                // ★ [핵심] url 필드 추가 (일부 앱 지원용)
+                url: shareUrl, 
             });
             setIsShareModalOpen(false);
         } catch (err) {
+            // 사용자가 취소(AbortError)한 게 아니면 저장 모달 띄우기
             if ((err as Error).name !== 'AbortError') {
                 setSavedImageUrl(resultBlobUrl); 
             }
         }
     } else {
+        // PC 등 미지원 환경: 저장 모달 띄우기
         console.log('Native share not supported');
         setSavedImageUrl(resultBlobUrl);
         setIsShareModalOpen(false);
