@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+// [수정] html2canvas 제거 (정적 이미지 사용으로 변경하여 안정성 확보)
 import { RECIPES, RECIPES_KO, DishCode, ChefInfo } from '@/constants/dishData';
 
 // [타입 정의]
@@ -182,6 +183,8 @@ const MusicTaste = () => {
   const [savedImageUrl, setSavedImageUrl] = useState<string | null>(null);
   const [isKakaoInApp, setIsKakaoInApp] = useState(false);
 
+  const ticketRef = useRef<HTMLDivElement>(null);
+
   const t = UI_TEXT[lang];
   const currentQuestions = lang === 'ko' ? QUESTIONS_KO : QUESTIONS_EN;
 
@@ -260,13 +263,13 @@ const MusicTaste = () => {
     </div>
   );
 
-  // [이미지 경로 생성]
+  // [수정] 정적 이미지 경로 생성 함수 (html2canvas 대체)
   const getImagePath = () => {
     const suffix = lang === 'en' ? ' (Eng)' : ' (Kr)';
     return `/results/${resultCode}${suffix}.png`;
   };
 
-  // [정적 이미지 Fetch]
+  // [수정] 정적 이미지 Fetch 함수 (서버에 있는 이미지 가져오기)
   const getStaticImageBlob = async (): Promise<Blob | null> => {
     const imagePath = getImagePath();
     try {
@@ -279,6 +282,7 @@ const MusicTaste = () => {
     }
   };
 
+  // [링크 복사 함수]
   const handleCopyLink = async () => {
     try {
       const url = `${window.location.origin}/share/${resultCode}`;
@@ -301,16 +305,16 @@ const MusicTaste = () => {
     }
   };
 
-  // [네이티브 공유 기능] - 모달 내부에서만 호출됨
+  // [수정] 인스타그램/네이티브 공유 함수 (정적 이미지 사용)
   const handleInstagramShare = async () => {
     if (isSaving) return;
     setIsSaving(true);
     
     try {
+      // html2canvas 대신 정적 이미지 Blob 가져오기
       const blob = await getStaticImageBlob();
       
       if (!blob) {
-        // 이미지가 아직 서버에 없을 경우
         alert(lang === 'en' ? 'Image loading... Please wait.' : '이미지를 불러오는 중입니다... 잠시 후 다시 시도해주세요.');
         return; 
       }
@@ -329,7 +333,7 @@ const MusicTaste = () => {
       }
     } catch (err) {
       console.log('네이티브 공유 불가 -> 이미지 저장 모달로 전환');
-      setSavedImageUrl(getImagePath());
+      setSavedImageUrl(getImagePath()); // Blob 생성 실패 시 이미지 경로 직접 사용
     } finally {
       setIsSaving(false);
       setIsShareModalOpen(false);
@@ -557,8 +561,7 @@ const MusicTaste = () => {
 
             {/* Share & Retake Buttons */}
             <div className="flex w-full gap-3">
-                {/* [중요] 업데이트 확인용 아이콘 변경: 🎁 선물 상자 */}
-                {/* 이 버튼은 이제 handleInstagramShare를 직접 호출하지 않고, 모달창(setIsShareModalOpen)만 엽니다 */}
+                {/* [핵심] 공유 모달 열기 버튼 (e.stopPropagation 필수) */}
                 <button onClick={(e) => { e.stopPropagation(); setIsShareModalOpen(true); }} className="flex-[3] py-3.5 bg-white text-black rounded-xl font-bold text-sm hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-md">
                     <span className="text-xl">🎁</span> {t.shareBtn}
                 </button>
@@ -572,7 +575,6 @@ const MusicTaste = () => {
 
       {/* 공유 모달 */}
       {isShareModalOpen && (
-        // z-index를 5000으로 높여서 다른 요소에 가려지지 않게 함
         <div className="fixed inset-0 z-[5000] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsShareModalOpen(false)}>
           <div className="w-full max-w-sm bg-[#252525] rounded-t-2xl overflow-hidden pb-4" onClick={e => e.stopPropagation()}>
             <div className="p-4 text-center border-b border-gray-700/50 relative">
@@ -587,7 +589,7 @@ const MusicTaste = () => {
                     <span className="text-white font-bold text-sm">{t.copyLink}</span>
                 </button>
                 
-                {/* [핵심] 모달 내부의 이 버튼만이 실제 공유 기능을 호출합니다 */}
+                {/* [핵심] 이미지 공유 버튼: 정적 이미지(getStaticImageBlob) 사용 */}
                 <button onClick={handleInstagramShare} disabled={isSaving} className="flex items-center gap-3 p-5 hover:bg-gray-700/50 transition text-left active:bg-gray-700">
                     <div className="w-10 h-10 relative flex items-center justify-center">
                         {isSaving ? (
