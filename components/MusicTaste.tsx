@@ -301,7 +301,7 @@ const MusicTaste = () => {
     }
   };
 
-  // [네이티브 공유 기능] - 정적 이미지 사용
+  // [네이티브 공유 기능] - 모달 내부에서만 호출됨
   const handleInstagramShare = async () => {
     if (isSaving) return;
     setIsSaving(true);
@@ -311,7 +311,7 @@ const MusicTaste = () => {
       
       if (!blob) {
         // 이미지가 아직 서버에 없을 경우
-        alert(lang === 'en' ? 'Image loading... Please wait.' : '이미지를 불러오는 중입니다...');
+        alert(lang === 'en' ? 'Image loading... Please wait.' : '이미지를 불러오는 중입니다... 잠시 후 다시 시도해주세요.');
         return; 
       }
 
@@ -537,7 +537,7 @@ const MusicTaste = () => {
                     </div>
                 </div>
 
-                {/* Jagged Edge (종이 찢어진 효과) */}
+                {/* Jagged Edge */}
                 <div style={{ 
                     position: 'absolute', bottom: '-10px', left: 0, width: '100%', height: '10px', 
                     backgroundColor: '#f8f8f4', 
@@ -557,9 +557,10 @@ const MusicTaste = () => {
 
             {/* Share & Retake Buttons */}
             <div className="flex w-full gap-3">
-                {/* [핵심 수정] 버튼 클릭 시 곧바로 공유가 아닌, 모달(setIsShareModalOpen)을 먼저 엽니다 */}
-                <button onClick={() => setIsShareModalOpen(true)} className="flex-[3] py-3.5 bg-white text-black rounded-xl font-bold text-sm hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-md">
-                    <span className="text-xl">🔗</span> {t.shareBtn}
+                {/* [중요] 업데이트 확인용 아이콘 변경: 🎁 선물 상자 */}
+                {/* 이 버튼은 이제 handleInstagramShare를 직접 호출하지 않고, 모달창(setIsShareModalOpen)만 엽니다 */}
+                <button onClick={(e) => { e.stopPropagation(); setIsShareModalOpen(true); }} className="flex-[3] py-3.5 bg-white text-black rounded-xl font-bold text-sm hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-md">
+                    <span className="text-xl">🎁</span> {t.shareBtn}
                 </button>
                 <button onClick={handleRestart} className="flex-1 py-3.5 bg-gray-800 text-gray-300 border border-gray-700 rounded-xl font-bold text-sm hover:bg-gray-700 hover:text-white transition flex items-center justify-center shadow-md">
                     <span className="text-xl">↻</span>
@@ -569,9 +570,10 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 공유 모달 (복원 및 연결 완료) */}
+      {/* 공유 모달 */}
       {isShareModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsShareModalOpen(false)}>
+        // z-index를 5000으로 높여서 다른 요소에 가려지지 않게 함
+        <div className="fixed inset-0 z-[5000] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsShareModalOpen(false)}>
           <div className="w-full max-w-sm bg-[#252525] rounded-t-2xl overflow-hidden pb-4" onClick={e => e.stopPropagation()}>
             <div className="p-4 text-center border-b border-gray-700/50 relative">
                <h3 className="text-white font-bold text-base">{t.shareMenuTitle}</h3>
@@ -585,7 +587,7 @@ const MusicTaste = () => {
                     <span className="text-white font-bold text-sm">{t.copyLink}</span>
                 </button>
                 
-                {/* [핵심 수정] 여기서 비로소 handleInstagramShare를 호출하여 정적 이미지를 공유합니다 */}
+                {/* [핵심] 모달 내부의 이 버튼만이 실제 공유 기능을 호출합니다 */}
                 <button onClick={handleInstagramShare} disabled={isSaving} className="flex items-center gap-3 p-5 hover:bg-gray-700/50 transition text-left active:bg-gray-700">
                     <div className="w-10 h-10 relative flex items-center justify-center">
                         {isSaving ? (
@@ -601,9 +603,9 @@ const MusicTaste = () => {
         </div>
       )}
 
-      {/* 저장 모달 (Static Image 사용) */}
+      {/* 저장 모달 */}
       {savedImageUrl && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSavedImageUrl(null)}>
+        <div className="fixed inset-0 z-[5010] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSavedImageUrl(null)}>
           <div className="max-w-sm w-full bg-white rounded-xl p-6 flex flex-col items-center space-y-6" onClick={e => e.stopPropagation()}>
             <h3 className="font-bold text-lg text-black">이미지 저장</h3>
             <p className="text-sm text-gray-500 text-center leading-relaxed">
