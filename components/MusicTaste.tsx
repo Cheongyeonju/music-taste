@@ -1,12 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-// ★ [핵심] useParams가 여기 확실히 포함되어 있습니다.
 import { useRouter, useParams } from 'next/navigation'; 
 import Image from 'next/image';
 import { RECIPES, RECIPES_KO, DishCode, ChefInfo } from '@/constants/dishData';
+import { TAG_RECIPES } from '@/constants/playlistData';
 
-// [타입 정의]
+// [16가지 코드 전체 리스트]
+const ALL_CODES = [
+  "SCOF", "SCOH", "SCPF", "SCPH", "SDOF", "SDOH", "SDPF", "SDPH",
+  "BCOF", "BCOH", "BCPF", "BCPH", "BDOF", "BDOH", "BDPF", "BDPH"
+];
+
 interface Option {
   text: string;
   subtext: string;
@@ -20,7 +25,6 @@ interface Question {
   options: Option[];
 }
 
-// [상수 데이터]
 const QUESTIONS_EN: Question[] = [
   {
     category: 'BASE',
@@ -109,7 +113,6 @@ const QUESTIONS_KO: Question[] = [
 
 const UI_TEXT = {
   en: {
-    // Tasty -> Taste 수정 완료
     introTitle: <>What&apos;s Your <br/><span className="text-neon-gradient">Music Taste?</span></>,
     introDesc: <>What flavor is your music?<br/>Analyze your taste and create a playlist.</>,
     startBtn: "Start Analysis",
@@ -168,20 +171,181 @@ const METRIC_VALUES = [
   { leftVal: 'F', rightVal: 'H' },
 ];
 
+const SectionDivider = ({ title }: { title: string }) => (
+  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', marginTop: '8px' }}>
+    <div style={{ flex: 1, height: '1px', borderTop: '1px dashed #d1d5db' }}></div>
+    <span style={{ flexShrink: 0, fontSize: '10px', fontWeight: 900, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '-2px', paddingLeft: '12px', paddingRight: '12px' }}>{title}</span>
+    <div style={{ flex: 1, height: '1px', borderTop: '1px dashed #d1d5db' }}></div>
+  </div>
+);
+
+// ★ [핵심] variantId(0, 1, 2)를 추가로 받아서 섞는 시드에 반영합니다.
+// 결과: 같은 코드라도 variantId가 다르면 다른 셰프 조합이 나옵니다.
+const getConsistentChefs = (code: string, originChefs: ChefInfo[], variantId: number) => {
+    // 시드 생성 = (코드 문자 합) + (변형 ID * 큰 숫자)
+    // variantId가 바뀌면 시드도 확 바뀌어서 전혀 다른 순서가 됨
+    let seed = code.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) + (variantId * 1337);
+    
+    const shuffled = [...originChefs].sort(() => {
+        const x = Math.sin(seed++) * 10000;
+        return (x - Math.floor(x)) - 0.5;
+    });
+    return shuffled.slice(0, 3);
+};
+
+// src/components/MusicTaste.tsx 내부
+
+const ReceiptView = ({ code, lang, t }: { code: string, lang: 'en' | 'ko', t: any }) => {
+  // [유지] 셰프 조합 랜덤 고정 (새로고침 전까지 유지)
+  const [variantId] = useState(() => Math.floor(Math.random() * 3));
+  // [추가] 하이드레이션 에러 방지를 위해 날짜를 state로 관리
+  const [today, setToday] = useState('');
+
+  useEffect(() => {
+    // 컴포넌트가 마운트된 후(클라이언트) 날짜 설정
+    setToday(new Date().toLocaleDateString('ko-KR'));
+  }, []);
+
+  const baseData = RECIPES[code] || RECIPES['default'];
+
+  const textData = lang === 'ko' 
+      ? (RECIPES_KO[code] || RECIPES_KO['default']) 
+      : baseData;
+  
+  const emoji = baseData.emoji;
+  
+  // [유지] 셰프 가져오기
+  const chefs = getConsistentChefs(code, baseData.chefs, variantId);
+  const localAnswers = code.split('') as DishCode[]; 
+
+  return (
+    <div 
+        className="relative rounded-t-2xl font-sans mb-8"
+        style={{ 
+            backgroundColor: '#f8f8f4', 
+            color: '#1f2937', 
+            filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))', 
+            width: '100%',
+            maxWidth: '380px'
+        }}
+    >
+        <div style={{ padding: '24px', paddingBottom: '0' }}>
+            <div style={{ textAlign: 'center', borderBottom: '2px dashed #d1d5db', paddingBottom: '20px', marginBottom: '32px' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.025em', textTransform: 'uppercase', margin: 0, color: '#1f2937' }}>{t.ticketTitle}</h2>
+                
+                {/* ▼ [수정됨] CODE: {code} -> 오늘 날짜 표시 */}
+                <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px', margin: 0 }}>
+                    {today}
+                </p>
+            </div>
+
+            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+                <div style={{ fontSize: '72px', marginBottom: '16px', lineHeight: 1 }}>{emoji}</div>
+                <h3 style={{ fontSize: '20px', fontWeight: 900, textTransform: 'uppercase', lineHeight: 1.1, marginBottom: '8px', marginTop: 0, color: '#1f2937' }}>{textData.name}</h3>
+                <p style={{ fontSize: '11px', color: '#4b5563', fontFamily: 'sans-serif', lineHeight: 1.6, padding: '0 4px', margin: 0, wordBreak: 'keep-all' }}>{textData.description}</p>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+                <SectionDivider title={t.analysis} />
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {t.metrics.map((metric: any, idx: number) => {
+                        const values = METRIC_VALUES[idx];
+                        const isLeftSelected = localAnswers[idx] === values.leftVal;
+                        return (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '6px 0', borderBottom: '1px dotted #e5e7eb' }}>
+                                <span style={{ width: '80px', flexShrink: 0, fontWeight: 'bold', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px', textAlign: 'left' }}>{idx + 1}. {metric.label}</span>
+                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '24px' }}>
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', color: isLeftSelected ? '#000000' : '#9ca3af', fontWeight: isLeftSelected ? 'bold' : 'normal' }}>
+                                        <span style={{ fontSize: '12px', marginRight: '6px', lineHeight: 1 }}>{isLeftSelected ? '☑' : '☐'}</span>
+                                        <span style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>{metric.left}</span>
+                                    </div>
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', color: !isLeftSelected ? '#000000' : '#9ca3af', fontWeight: !isLeftSelected ? 'bold' : 'normal' }}>
+                                        <span style={{ fontSize: '12px', marginRight: '6px', lineHeight: 1 }}>{!isLeftSelected ? '☑' : '☐'}</span>
+                                        <span style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>{metric.right}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+                <SectionDivider title={t.tastingNotes} />
+                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', paddingTop: '4px' }}>
+                    {textData.tags.slice(0, 3).map((tag: string) => ( 
+                    <span key={tag} style={{ 
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '24px', 
+                        padding: '0 12px', borderRadius: '4px', border: '1px solid #e9d5ff', 
+                        backgroundColor: '#faf5ff', color: '#7e22ce', fontSize: '10px', 
+                        fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.025em' 
+                    }}>#{tag}</span>
+                    ))}
+                </div>
+            </div>
+        
+            <div style={{ marginBottom: '24px' }}>
+                <SectionDivider title={t.headChefs} />
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', paddingTop: '5px' }}>
+                    {chefs && chefs.map((chef, idx) => (
+                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '72px' }}>
+                        <div style={{ position: 'relative', marginBottom: '8px' }}>
+                            <div style={{ 
+                                width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#f3f4f6', 
+                                border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                                fontSize: '24px', color: '#374151' 
+                            }}>👨‍🍳</div>
+                            <div style={{ 
+                                position: 'absolute', bottom: '-4px', right: '-4px', width: '24px', height: '14px', 
+                                backgroundColor: chef.region === 'KR' ? '#000000' : '#6b7280', 
+                                borderRadius: '4px', border: '1px solid #ffffff', display: 'flex', 
+                                alignItems: 'center', justifyContent: 'center' 
+                            }}>
+                                <span style={{ fontSize: '7px', fontWeight: 'bold', color: '#ffffff', lineHeight: 1 }}>{chef.region}</span>
+                            </div>
+                        </div>
+                        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', textAlign: 'center' }}>
+                            <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#1f2937', lineHeight: 1.1, wordBreak: 'keep-all' }}>{chef.name}</span>
+                        </div>
+                    </div>
+                    ))}
+                </div>
+            </div>
+            
+            <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '2px dashed #d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', paddingBottom: '32px', opacity: 0.8 }}>
+                <div style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}> 
+                    <img src="/logo_symbol.png" alt="Symbol" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </div>
+                <div style={{ width: '70px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}> 
+                    <img src="/logo_text.png" alt="Logo Type" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </div>
+            </div>
+        </div>
+
+        <div style={{ 
+            position: 'absolute', bottom: '-10px', left: 0, width: '100%', height: '10px', 
+            backgroundColor: '#f8f8f4', 
+            clipPath: 'polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)' 
+        }}></div>
+    </div>
+  );
+};
+
+
 const MusicTaste = () => {
   const router = useRouter();
-  const params = useParams(); // ★ 여기가 정상 작동의 핵심입니다!
-  const shareCode = params?.code as string; 
+  const params = useParams(); 
+  const shareCode = params?.code ? (params.code as string) : null;
 
   const [lang, setLang] = useState<'en' | 'ko'>('en'); 
-  
-  // 공유 코드(shareCode)가 있으면 결과화면(99)부터 바로 시작
   const [step, setStep] = useState(shareCode ? 99 : 0); 
   const [answers, setAnswers] = useState<DishCode[]>([]);
   const [resultCode, setResultCode] = useState<string>(
     shareCode ? shareCode.toUpperCase() : 'default'
   );
 
+  // 이 state들은 이제 일반 진행(step < 99)에서만 쓰입니다. 
+  // 결과 화면(step 99)은 ReceiptView가 전담합니다.
   const [chefs, setChefs] = useState<ChefInfo[]>([]);
   const [emoji, setEmoji] = useState<string>('🍽️');
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -196,20 +360,17 @@ const MusicTaste = () => {
   const t = UI_TEXT[lang];
   const currentQuestions = lang === 'ko' ? QUESTIONS_KO : QUESTIONS_EN;
 
-  // 1. 공유 링크로 접속했을 때 처리
   useEffect(() => {
     if (shareCode) {
       const code = shareCode.toUpperCase();
       const foundRecipe = RECIPES[code] || RECIPES['default'];
       if (foundRecipe) {
-          const randomChefs = [...foundRecipe.chefs].sort(() => 0.5 - Math.random()).slice(0, 3);
-          setChefs(randomChefs);
-          setEmoji(foundRecipe.emoji);
+          setStep(99); 
+          setResultCode(code);
       }
     }
   }, [shareCode]);
 
-  // 카카오 인앱 브라우저 처리
   useEffect(() => {
     const userAgent = navigator.userAgent.toLowerCase();
     if (userAgent.includes('kakao')) {
@@ -228,7 +389,6 @@ const MusicTaste = () => {
     return `/results/${code}${suffix}.png`;
   };
 
-  // 이미지 프리로드 및 파일 변환
   useEffect(() => {
     if (step === 99 && resultCode && resultCode !== 'default') {
       const prepareImage = async () => {
@@ -294,36 +454,13 @@ const MusicTaste = () => {
     window.scrollTo(0, 0);
   };
 
-  const getRandomChefs = (allChefs: ChefInfo[]) => {
-    return [...allChefs].sort(() => 0.5 - Math.random()).slice(0, 3);
-  };
-
-  // 2. 테스트 완료 후 결과 처리 (공유 링크가 아닐 때)
+  // 일반 진행 시 결과 처리
   useEffect(() => {
     if (step === 99 && !shareCode) {
       const code = answers.join('');
-      const foundRecipe = RECIPES[code] || RECIPES['default'];
-      const randomChefs = getRandomChefs(foundRecipe.chefs);
       setResultCode(code); 
-      setChefs(randomChefs); 
-      setEmoji(foundRecipe.emoji); 
     }
   }, [step, answers, shareCode]);
-
-  const getResultText = () => {
-    if (lang === 'ko') return RECIPES_KO[resultCode] || RECIPES_KO['default'];
-    return RECIPES[resultCode] || RECIPES['default'];
-  };
-  
-  const finalResultData = getResultText();
-
-  const SectionDivider = ({ title }: { title: string }) => (
-    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', marginTop: '8px' }}>
-      <div style={{ flex: 1, height: '1px', borderTop: '1px dashed #d1d5db' }}></div>
-      <span style={{ flexShrink: 0, fontSize: '10px', fontWeight: 900, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '-2px', paddingLeft: '12px', paddingRight: '12px' }}>{title}</span>
-      <div style={{ flex: 1, height: '1px', borderTop: '1px dashed #d1d5db' }}></div>
-    </div>
-  );
 
   const handleCopyLink = async () => {
     try {
@@ -385,9 +522,29 @@ const MusicTaste = () => {
   };
   
   const handlePlayList = () => {
-    // 플레이리스트 연동
-    const playlistUrl = `https://your-music-service.com/playlist/generate?type=${resultCode}`;
-    window.open(playlistUrl, '_blank');
+    // 1. 현재 결과 코드 (없으면 default)
+    const code = resultCode || 'default';
+    
+    // 2. 레시피 데이터 가져오기 (위에서 만든 데이터 사용)
+    const recipe = TAG_RECIPES[code] || TAG_RECIPES['default'];
+
+    // 3. Unlisted 사이트로 보낼 URL 생성
+    const baseUrl = 'https://unlisted.music/radio';
+    
+    // URL 파라미터 조립 (여기가 핵심입니다!)
+    const params = new URLSearchParams({
+      start_radio: 'true',           // ★ Unlisted 사이트가 이 값을 보고 자동 재생함
+      genre: recipe.genre,           // 메인 장르
+      mood: recipe.mood,             // 메인 무드
+      tags: recipe.tags.join(','),   // 상세 태그들 (콤마로 연결)
+      
+      // (선택 사항) 통계/추적용 파라미터
+      utm_source: 'music_taste_test', 
+      utm_content: code              
+    });
+
+    // 4. 새 탭으로 이동
+    window.open(`${baseUrl}?${params.toString()}`, '_blank');
   };
 
   const progress = (step / 4) * 100;
@@ -413,8 +570,29 @@ const MusicTaste = () => {
         </div>
       )}
 
+      {/* 갤러리 모드 (777) */}
+      {step === 777 && (
+        <div className="w-full max-w-lg space-y-8 animate-fade-in pb-10">
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">👀 Gallery Mode (All 16)</h2>
+                <button onClick={() => setStep(0)} className="px-3 py-1 bg-gray-800 rounded-lg text-sm">Close</button>
+            </div>
+            {ALL_CODES.map((code) => (
+                <ReceiptView key={code} code={code} lang={lang} t={t} />
+            ))}
+        </div>
+      )}
+
       {step === 0 && (
         <div className="text-center space-y-6 animate-fade-in max-w-2xl relative">
+          <button 
+            onClick={() => setStep(777)}
+            className="absolute top-0 left-0 p-2 opacity-30 hover:opacity-100 text-2xl"
+            title="View All Results"
+          >
+            🐞
+          </button>
+
           <div className="inline-block p-4 rounded-full bg-gray-800 border border-gray-700 mb-6 shadow-xl relative overflow-visible">
              <div className="relative w-14 h-14 flex items-center justify-center filter drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
                <span className="text-[3.5rem] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-90 select-none">🍽️</span>
@@ -465,111 +643,7 @@ const MusicTaste = () => {
 
       {step === 99 && (
         <div className="w-full max-w-sm animate-slide-up pb-10 relative z-10">
-          
-          <div 
-            id="printable-receipt-area" 
-            className="relative rounded-t-2xl font-sans"
-            style={{ 
-                backgroundColor: '#f8f8f4', 
-                color: '#1f2937', 
-                filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))', 
-            }}
-          >
-                <div style={{ padding: '24px', paddingBottom: '0' }}>
-                    <div style={{ textAlign: 'center', borderBottom: '2px dashed #d1d5db', paddingBottom: '20px', marginBottom: '32px' }}>
-                        <h2 style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.025em', textTransform: 'uppercase', margin: 0, color: '#1f2937' }}>{t.ticketTitle}</h2>
-                        <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px', margin: 0 }}>{new Date().toLocaleDateString()}</p>
-                    </div>
-
-                    <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                        <div style={{ fontSize: '72px', marginBottom: '16px', lineHeight: 1 }}>{emoji}</div>
-                        <h3 style={{ fontSize: '20px', fontWeight: 900, textTransform: 'uppercase', lineHeight: 1.1, marginBottom: '8px', marginTop: 0, color: '#1f2937' }}>{finalResultData.name}</h3>
-                        <p style={{ fontSize: '11px', color: '#4b5563', fontFamily: 'sans-serif', lineHeight: 1.6, padding: '0 4px', margin: 0, wordBreak: 'keep-all' }}>{finalResultData.description}</p>
-                    </div>
-
-                    <div style={{ marginBottom: '40px' }}>
-                        <SectionDivider title={t.analysis} />
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            {t.metrics.map((metric, idx) => {
-                            const values = METRIC_VALUES[idx];
-                            const isLeftSelected = answers[idx] === values.leftVal || (shareCode && shareCode[idx] === values.leftVal);
-                            return (
-                                <div key={idx} style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '6px 0', borderBottom: '1px dotted #e5e7eb' }}>
-                                    <span style={{ width: '80px', flexShrink: 0, fontWeight: 'bold', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px', textAlign: 'left' }}>{idx + 1}. {metric.label}</span>
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '24px' }}>
-                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', color: isLeftSelected ? '#000000' : '#9ca3af', fontWeight: isLeftSelected ? 'bold' : 'normal' }}>
-                                            <span style={{ fontSize: '12px', marginRight: '6px', lineHeight: 1 }}>{isLeftSelected ? '☑' : '☐'}</span>
-                                            <span style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>{metric.left}</span>
-                                        </div>
-                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', color: !isLeftSelected ? '#000000' : '#9ca3af', fontWeight: !isLeftSelected ? 'bold' : 'normal' }}>
-                                            <span style={{ fontSize: '12px', marginRight: '6px', lineHeight: 1 }}>{!isLeftSelected ? '☑' : '☐'}</span>
-                                            <span style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>{metric.right}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                            })}
-                        </div>
-                    </div>
-
-                    <div style={{ marginBottom: '40px' }}>
-                        <SectionDivider title={t.tastingNotes} />
-                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', paddingTop: '4px' }}>
-                            {finalResultData.tags.slice(0, 3).map((tag) => ( 
-                            <span key={tag} style={{ 
-                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '24px', 
-                                padding: '0 12px', borderRadius: '4px', border: '1px solid #e9d5ff', 
-                                backgroundColor: '#faf5ff', color: '#7e22ce', fontSize: '10px', 
-                                fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.025em' 
-                            }}>#{tag}</span>
-                            ))}
-                        </div>
-                    </div>
-                
-                    <div style={{ marginBottom: '24px' }}>
-                        <SectionDivider title={t.headChefs} />
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', paddingTop: '12px' }}>
-                            {chefs && chefs.map((chef, idx) => (
-                            <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '72px' }}>
-                                <div style={{ position: 'relative', marginBottom: '8px' }}>
-                                    <div style={{ 
-                                        width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#f3f4f6', 
-                                        border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                                        fontSize: '24px', color: '#374151' 
-                                    }}>👨‍🍳</div>
-                                    <div style={{ 
-                                        position: 'absolute', bottom: '-4px', right: '-4px', width: '24px', height: '14px', 
-                                        backgroundColor: chef.region === 'KR' ? '#000000' : '#6b7280', 
-                                        borderRadius: '4px', border: '1px solid #ffffff', display: 'flex', 
-                                        alignItems: 'center', justifyContent: 'center' 
-                                    }}>
-                                        <span style={{ fontSize: '7px', fontWeight: 'bold', color: '#ffffff', lineHeight: 1 }}>{chef.region}</span>
-                                    </div>
-                                </div>
-                                <div style={{ width: '100%', display: 'flex', justifyContent: 'center', textAlign: 'center' }}>
-                                    <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#1f2937', lineHeight: 1.1, wordBreak: 'keep-all' }}>{chef.name}</span>
-                                </div>
-                            </div>
-                            ))}
-                        </div>
-                    </div>
-                    
-                    <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '2px dashed #d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', paddingBottom: '32px', opacity: 0.8 }}>
-                        <div style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}> 
-                            <img src="/logo_symbol.png" alt="Symbol" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                        </div>
-                        <div style={{ width: '70px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}> 
-                            <img src="/logo_text.png" alt="Logo Type" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                        </div>
-                    </div>
-                </div>
-
-                <div style={{ 
-                    position: 'absolute', bottom: '-10px', left: 0, width: '100%', height: '10px', 
-                    backgroundColor: '#f8f8f4', 
-                    clipPath: 'polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)' 
-                }}></div>
-          </div>
+          <ReceiptView code={resultCode} lang={lang} t={t} />
 
           <div className="mt-8 flex flex-col gap-3 px-1 relative z-20">
             <button 
