@@ -8,13 +8,13 @@ type Props = {
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   // ★ [핵심] 복잡한 로직 다 지우고, 무조건 고정 이미지로 설정!
-  const fixedImageUrl = 'https://music-taste-unlisted.vercel.app/main-thumb.png';
+  const fixedImageUrl = 'https://music-taste-unlisted.vercel.app/api/og/main-thumb.png';;
 
   return {
-    title: "Music Tasty | 당신의 음악은 무슨 맛인가요?",
+    title: "Music Taste | 당신의 음악은 무슨 맛인가요?",
     description: "내 음악 취향을 분석하고, 나의 입맛에 맞는 플레이리스트를 찾아보세요.",
     openGraph: {
-      title: "Music Tasty : 내 음악 취향 분석",
+      title: "Music Taste : 내 음악 취향 분석",
       description: "당신의 음악은 무슨 맛인가요? 지금 확인해보세요.",
       url: "https://music-taste-unlisted.vercel.app",
       images: [
@@ -27,7 +27,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     },
     twitter: {
       card: 'summary_large_image',
-      title: "Music Tasty : 내 음악 취향 분석",
+      title: "Music Taste : 내 음악 취향 분석",
       description: "당신의 음악은 무슨 맛인가요? 지금 확인해보세요.",
       images: [fixedImageUrl],
     },

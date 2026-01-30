@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/main-thumb.png", // ★ 이 이미지 파일 자체를 교체하셔야 이미지 속 글자가 바뀝니다!
+        url: "app/api/og/main-thumb.png", // ★ 이 이미지 파일 자체를 교체하셔야 이미지 속 글자가 바뀝니다!
         width: 1200,
         height: 630,
         alt: "Music Taste Main Thumbnail",
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     // ★ 트위터 공유 제목 (Tasty -> Taste)
     title: "Music Taste : 내 음악 취향 분석",
     description: "당신의 음악은 무슨 맛인가요? 지금 확인해보세요.",
-    images: ["/main-thumb.png"],
+    images: ["/app/api/og/main-thumb.png"],
   },
 };
 
