@@ -14,8 +14,7 @@ export const metadata: Metadata = {
   title: "Music Taste | 당신의 음악은 무슨 맛인가요?",
   description: "내 음악 취향을 분석하고, 나의 입맛에 맞는 플레이리스트를 찾아보세요.",
 
-  openGraph: {
-    // ★ 카톡 공유 시 뜨는 굵은 제목 (Tasty -> Taste)
+openGraph: {
     title: "Music Taste : 내 음악 취향 분석", 
     description: "당신의 음악은 무슨 맛인가요? 지금 확인해보세요.",
     url: "https://music-taste-unlisted.vercel.app",
@@ -24,22 +23,23 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "app/api/og/main-thumb.png", // ★ 이 이미지 파일 자체를 교체하셔야 이미지 속 글자가 바뀝니다!
+        // ★ 수정됨: public 폴더 기준 절대 경로 (v2로 변경)
+        url: "/main-thumb-v2.png", 
         width: 1200,
         height: 630,
         alt: "Music Taste Main Thumbnail",
       },
     ],
   },
-  
   twitter: {
     card: 'summary_large_image',
-    // ★ 트위터 공유 제목 (Tasty -> Taste)
     title: "Music Taste : 내 음악 취향 분석",
     description: "당신의 음악은 무슨 맛인가요? 지금 확인해보세요.",
-    images: ["/app/api/og/main-thumb.png"],
+    // ★ 수정됨
+    images: ["/main-thumb-v2.png"], 
   },
 };
+
 
 export default function RootLayout({
   children,
