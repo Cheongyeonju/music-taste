@@ -306,7 +306,7 @@ const MusicTaste = () => {
   const finalResultData = getResultText();
 
   const SectionDivider = ({ title }: { title: string }) => (
-    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', marginTop: '8px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', marginTop: '8px' }}>
       <div style={{ flex: 1, height: '1px', borderTop: '1px dashed #d1d5db' }}></div>
       <span style={{ flexShrink: 0, fontSize: '10px', fontWeight: 900, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '-2px', paddingLeft: '12px', paddingRight: '12px' }}>{title}</span>
       <div style={{ flex: 1, height: '1px', borderTop: '1px dashed #d1d5db' }}></div>
@@ -476,20 +476,20 @@ const handleInstagramShare = async () => {
           >
                 <div style={{ padding: '24px', paddingBottom: '0' }}>
                     {/* Header */}
-                    <div style={{ textAlign: 'center', borderBottom: '2px dashed #d1d5db', paddingBottom: '20px', marginBottom: '32px' }}>
+                    <div style={{ textAlign: 'center', borderBottom: '2px dashed #d1d5db', paddingBottom: '20px', marginBottom: '20px' }}>
                         <h2 style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.025em', textTransform: 'uppercase', margin: 0, color: '#1f2937' }}>{t.ticketTitle}</h2>
                         <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px', margin: 0 }}>{new Date().toLocaleDateString()}</p>
                     </div>
 
                     {/* Main Result */}
-                    <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+                    <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                         <div style={{ fontSize: '72px', marginBottom: '24px', lineHeight: 1 }}>{emoji}</div>
                         <h3 style={{ fontSize: '20px', fontWeight: 900, textTransform: 'uppercase', lineHeight: 1.6, marginBottom: '5px', margin: 0, color: '#1f2937' }}>{finalResultData.name}</h3>
                         <p style={{ fontSize: '11px', color: '#4b5563', fontFamily: 'sans-serif', lineHeight: 1.6, padding: '0 4px', margin: 0, wordBreak: 'keep-all' }}>{finalResultData.description}</p>
                     </div>
 
                     {/* Taste Graph */}
-                    <div style={{ marginBottom: '0px' }}>
+                    <div style={{ marginBottom: '20px' }}>
                         <SectionDivider title={t.analysis} />
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                             {t.metrics.map((metric, idx) => {
