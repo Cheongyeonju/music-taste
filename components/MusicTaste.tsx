@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-// ★ [핵심] useParams 추가됨
+// ★ [핵심] useParams가 여기 확실히 포함되어 있습니다.
 import { useRouter, useParams } from 'next/navigation'; 
 import Image from 'next/image';
 import { RECIPES, RECIPES_KO, DishCode, ChefInfo } from '@/constants/dishData';
@@ -109,13 +109,13 @@ const QUESTIONS_KO: Question[] = [
 
 const UI_TEXT = {
   en: {
-    // Tasty -> Taste 수정
+    // Tasty -> Taste 수정 완료
     introTitle: <>What&apos;s Your <br/><span className="text-neon-gradient">Music Taste?</span></>,
     introDesc: <>What flavor is your music?<br/>Analyze your taste and create a playlist.</>,
     startBtn: "Start Analysis",
     step: "STEP",
     back: "← Back",
-    ticketTitle: "Music Taste Result", // Tasty -> Taste
+    ticketTitle: "Music Taste Result",
     analysis: "Taste Graph",
     tastingNotes: "Flavor Notes",
     headChefs: "Similar Artists",
@@ -140,7 +140,7 @@ const UI_TEXT = {
     startBtn: "테스트 시작하기",
     step: "단계",
     back: "← 뒤로",
-    ticketTitle: "MUSIC TASTE", // Tasty -> Taste
+    ticketTitle: "MUSIC TASTE",
     analysis: "취향 분석표",
     tastingNotes: "테이스팅 노트",
     headChefs: "추천 아티스트",
@@ -170,16 +170,14 @@ const METRIC_VALUES = [
 
 const MusicTaste = () => {
   const router = useRouter();
-  const params = useParams(); // ★ URL 파라미터 훅
-  const shareCode = params?.code as string; // ★ 공유된 코드 (예: BCOH)
+  const params = useParams(); // ★ 여기가 정상 작동의 핵심입니다!
+  const shareCode = params?.code as string; 
 
   const [lang, setLang] = useState<'en' | 'ko'>('en'); 
   
-  // shareCode가 있으면 바로 결과 화면(99)으로 시작
+  // 공유 코드(shareCode)가 있으면 결과화면(99)부터 바로 시작
   const [step, setStep] = useState(shareCode ? 99 : 0); 
   const [answers, setAnswers] = useState<DishCode[]>([]);
-  
-  // shareCode가 있으면 해당 코드로 초기화
   const [resultCode, setResultCode] = useState<string>(
     shareCode ? shareCode.toUpperCase() : 'default'
   );
@@ -198,7 +196,7 @@ const MusicTaste = () => {
   const t = UI_TEXT[lang];
   const currentQuestions = lang === 'ko' ? QUESTIONS_KO : QUESTIONS_EN;
 
-  // 공유 코드로 접속했을 때 데이터 세팅
+  // 1. 공유 링크로 접속했을 때 처리
   useEffect(() => {
     if (shareCode) {
       const code = shareCode.toUpperCase();
@@ -211,6 +209,7 @@ const MusicTaste = () => {
     }
   }, [shareCode]);
 
+  // 카카오 인앱 브라우저 처리
   useEffect(() => {
     const userAgent = navigator.userAgent.toLowerCase();
     if (userAgent.includes('kakao')) {
@@ -229,6 +228,7 @@ const MusicTaste = () => {
     return `/results/${code}${suffix}.png`;
   };
 
+  // 이미지 프리로드 및 파일 변환
   useEffect(() => {
     if (step === 99 && resultCode && resultCode !== 'default') {
       const prepareImage = async () => {
@@ -239,7 +239,7 @@ const MusicTaste = () => {
           if (!response.ok) throw new Error(`Image fetch failed: ${response.status}`);
           
           const blob = await response.blob();
-          const fileName = `MusicTaste_${resultCode}.png`; // Tasty -> Taste
+          const fileName = `MusicTaste_${resultCode}.png`;
           const file = new File([blob], fileName, { type: 'image/png' });
           setResultFile(file);
 
@@ -298,8 +298,8 @@ const MusicTaste = () => {
     return [...allChefs].sort(() => 0.5 - Math.random()).slice(0, 3);
   };
 
+  // 2. 테스트 완료 후 결과 처리 (공유 링크가 아닐 때)
   useEffect(() => {
-    // 일반 진행(step 0부터 시작)일 때만 동작
     if (step === 99 && !shareCode) {
       const code = answers.join('');
       const foundRecipe = RECIPES[code] || RECIPES['default'];
@@ -362,13 +362,13 @@ const MusicTaste = () => {
     const shareUrl = window.location.origin; 
     const shareText = lang === 'ko' 
         ? `나의 음악 취향 결과! 🍽️\n테스트 하러 가기 👇\n${shareUrl}`
-        : `My Music Taste Result! 🍽️\nTry it now 👇\n${shareUrl}`; // Tasty -> Taste
+        : `My Music Taste Result! 🍽️\nTry it now 👇\n${shareUrl}`;
 
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [resultFile] })) {
         try {
             await navigator.share({
                 files: [resultFile],
-                title: 'Music Taste Result', // Tasty -> Taste
+                title: 'Music Taste Result',
                 text: shareText,
                 url: shareUrl, 
             });
@@ -384,9 +384,8 @@ const MusicTaste = () => {
     }
   };
   
-  // 플레이리스트 연동 버튼
   const handlePlayList = () => {
-    // 실제 서비스의 플레이리스트 생성/추천 페이지 URL
+    // 플레이리스트 연동
     const playlistUrl = `https://your-music-service.com/playlist/generate?type=${resultCode}`;
     window.open(playlistUrl, '_blank');
   };
