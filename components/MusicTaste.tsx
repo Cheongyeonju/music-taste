@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation'; 
 import Image from 'next/image';
 import { RECIPES, RECIPES_KO, DishCode, ChefInfo } from '@/constants/dishData';
 
@@ -168,10 +168,14 @@ const METRIC_VALUES = [
 
 const MusicTaste = () => {
   const router = useRouter();
+  const params = useParams(); // 추가됨
+  const shareCode = params?.code as string; // 추가됨
+
   const [lang, setLang] = useState<'en' | 'ko'>('en'); 
-  const [step, setStep] = useState(0); 
+  const [step, setStep] = useState(shareCode ? 99 : 0); // 수정됨
   const [answers, setAnswers] = useState<DishCode[]>([]);
-  const [resultCode, setResultCode] = useState<string>('default');
+  const [resultCode, setResultCode] = useState<string>(shareCode ? shareCode.toUpperCase() : 'default'); // 수정됨
+  // [여기까지]
   const [chefs, setChefs] = useState<ChefInfo[]>([]);
   const [emoji, setEmoji] = useState<string>('🍽️');
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
