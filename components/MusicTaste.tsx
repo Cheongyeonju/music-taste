@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+// ★ [핵심] useParams 추가됨
 import { useRouter, useParams } from 'next/navigation'; 
 import Image from 'next/image';
 import { RECIPES, RECIPES_KO, DishCode, ChefInfo } from '@/constants/dishData';
@@ -108,12 +109,13 @@ const QUESTIONS_KO: Question[] = [
 
 const UI_TEXT = {
   en: {
-    introTitle: <>What&apos;s Your <br/><span className="text-neon-gradient">Music Tasty?</span></>,
+    // Tasty -> Taste 수정
+    introTitle: <>What&apos;s Your <br/><span className="text-neon-gradient">Music Taste?</span></>,
     introDesc: <>What flavor is your music?<br/>Analyze your taste and create a playlist.</>,
     startBtn: "Start Analysis",
     step: "STEP",
     back: "← Back",
-    ticketTitle: "Tasty Result",
+    ticketTitle: "Music Taste Result", // Tasty -> Taste
     analysis: "Taste Graph",
     tastingNotes: "Flavor Notes",
     headChefs: "Similar Artists",
@@ -138,7 +140,7 @@ const UI_TEXT = {
     startBtn: "테스트 시작하기",
     step: "단계",
     back: "← 뒤로",
-    ticketTitle: "MUSIC TASTY",
+    ticketTitle: "MUSIC TASTE", // Tasty -> Taste
     analysis: "취향 분석표",
     tastingNotes: "테이스팅 노트",
     headChefs: "추천 아티스트",
@@ -168,31 +170,46 @@ const METRIC_VALUES = [
 
 const MusicTaste = () => {
   const router = useRouter();
-  const params = useParams(); // 추가됨
-  const shareCode = params?.code as string; // 추가됨
+  const params = useParams(); // ★ URL 파라미터 훅
+  const shareCode = params?.code as string; // ★ 공유된 코드 (예: BCOH)
 
   const [lang, setLang] = useState<'en' | 'ko'>('en'); 
-  const [step, setStep] = useState(shareCode ? 99 : 0); // 수정됨
+  
+  // shareCode가 있으면 바로 결과 화면(99)으로 시작
+  const [step, setStep] = useState(shareCode ? 99 : 0); 
   const [answers, setAnswers] = useState<DishCode[]>([]);
-  const [resultCode, setResultCode] = useState<string>(shareCode ? shareCode.toUpperCase() : 'default'); // 수정됨
-  // [여기까지]
+  
+  // shareCode가 있으면 해당 코드로 초기화
+  const [resultCode, setResultCode] = useState<string>(
+    shareCode ? shareCode.toUpperCase() : 'default'
+  );
+
   const [chefs, setChefs] = useState<ChefInfo[]>([]);
   const [emoji, setEmoji] = useState<string>('🍽️');
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   
-  // 모달 및 공유 상태 관리
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [savedImageUrl, setSavedImageUrl] = useState<string | null>(null);
   const [isKakaoInApp, setIsKakaoInApp] = useState(false);
-
-  // 이미지 로딩 상태 확인용
   const [isFileReady, setIsFileReady] = useState(false);
   const [resultFile, setResultFile] = useState<File | null>(null);
   const [resultBlobUrl, setResultBlobUrl] = useState<string | null>(null);
 
   const t = UI_TEXT[lang];
   const currentQuestions = lang === 'ko' ? QUESTIONS_KO : QUESTIONS_EN;
+
+  // 공유 코드로 접속했을 때 데이터 세팅
+  useEffect(() => {
+    if (shareCode) {
+      const code = shareCode.toUpperCase();
+      const foundRecipe = RECIPES[code] || RECIPES['default'];
+      if (foundRecipe) {
+          const randomChefs = [...foundRecipe.chefs].sort(() => 0.5 - Math.random()).slice(0, 3);
+          setChefs(randomChefs);
+          setEmoji(foundRecipe.emoji);
+      }
+    }
+  }, [shareCode]);
 
   useEffect(() => {
     const userAgent = navigator.userAgent.toLowerCase();
@@ -207,14 +224,11 @@ const MusicTaste = () => {
     }
   }, []);
 
-  // 1. 이미지 경로 생성 (공백 제거 적용)
   const getImagePath = (code: string, currentLang: string) => {
-    // 파일명 형식: SCOF(Eng).png (띄어쓰기 없음)
     const suffix = currentLang === 'en' ? '(Eng)' : '(Kr)';
     return `/results/${code}${suffix}.png`;
   };
 
-  // 2. 이미지 사전 로드 및 에러 핸들링
   useEffect(() => {
     if (step === 99 && resultCode && resultCode !== 'default') {
       const prepareImage = async () => {
@@ -222,22 +236,15 @@ const MusicTaste = () => {
         try {
           const imagePath = getImagePath(resultCode, lang);
           const response = await fetch(imagePath);
-          
-          if (!response.ok) {
-            throw new Error(`Image fetch failed: ${response.status}`);
-          }
+          if (!response.ok) throw new Error(`Image fetch failed: ${response.status}`);
           
           const blob = await response.blob();
-
-          // File 객체 생성
-          const fileName = `MusicTasty_${resultCode}.png`;
+          const fileName = `MusicTaste_${resultCode}.png`; // Tasty -> Taste
           const file = new File([blob], fileName, { type: 'image/png' });
           setResultFile(file);
 
-          // Blob URL 생성
           const blobUrl = URL.createObjectURL(blob);
           setResultBlobUrl(blobUrl);
-          
           setIsFileReady(true);
         } catch (e) {
           console.error("[Prepare Image Failed]", e);
@@ -292,7 +299,8 @@ const MusicTaste = () => {
   };
 
   useEffect(() => {
-    if (step === 99) {
+    // 일반 진행(step 0부터 시작)일 때만 동작
+    if (step === 99 && !shareCode) {
       const code = answers.join('');
       const foundRecipe = RECIPES[code] || RECIPES['default'];
       const randomChefs = getRandomChefs(foundRecipe.chefs);
@@ -300,7 +308,7 @@ const MusicTaste = () => {
       setChefs(randomChefs); 
       setEmoji(foundRecipe.emoji); 
     }
-  }, [step, answers]);
+  }, [step, answers, shareCode]);
 
   const getResultText = () => {
     if (lang === 'ko') return RECIPES_KO[resultCode] || RECIPES_KO['default'];
@@ -339,51 +347,48 @@ const MusicTaste = () => {
     }
   };
 
-const handleInstagramShare = async () => {
-    // 1. 파일 준비 확인
+  const handleInstagramShare = async () => {
     if (!isFileReady || !resultFile) {
         const fallbackPath = getImagePath(resultCode, lang);
         const confirmMsg = lang === 'ko' 
             ? '이미지를 불러오지 못했습니다. 링크를 열어서 확인하시겠습니까?' 
             : 'Failed to load image. Open image link?';
-            
         if(confirm(confirmMsg)) {
             window.open(fallbackPath, '_blank');
         }
         return;
     }
 
-    // 2. 공유할 링크 생성 (도메인)
     const shareUrl = window.location.origin; 
+    const shareText = lang === 'ko' 
+        ? `나의 음악 취향 결과! 🍽️\n테스트 하러 가기 👇\n${shareUrl}`
+        : `My Music Taste Result! 🍽️\nTry it now 👇\n${shareUrl}`; // Tasty -> Taste
 
-    // 3. Web Share API 호출
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [resultFile] })) {
         try {
             await navigator.share({
-                files: [resultFile], // 이미지 파일
-                title: 'Music Tasty Result',
-                
-                // ★ [핵심] 텍스트에 링크 추가 (\n\n으로 줄바꿈)
-                text: (lang === 'ko' 
-                  ? '나의 음악 취향 결과! 🍽️\n테스트 하러 가기 👇\n' 
-                  : 'My Music Tasty Result! 🍽️\nTry it now 👇\n') + shareUrl,
-                
-                // ★ [핵심] url 필드 추가 (일부 앱 지원용)
+                files: [resultFile],
+                title: 'Music Taste Result', // Tasty -> Taste
+                text: shareText,
                 url: shareUrl, 
             });
             setIsShareModalOpen(false);
         } catch (err) {
-            // 사용자가 취소(AbortError)한 게 아니면 저장 모달 띄우기
             if ((err as Error).name !== 'AbortError') {
                 setSavedImageUrl(resultBlobUrl); 
             }
         }
     } else {
-        // PC 등 미지원 환경: 저장 모달 띄우기
-        console.log('Native share not supported');
         setSavedImageUrl(resultBlobUrl);
         setIsShareModalOpen(false);
     }
+  };
+  
+  // 플레이리스트 연동 버튼
+  const handlePlayList = () => {
+    // 실제 서비스의 플레이리스트 생성/추천 페이지 URL
+    const playlistUrl = `https://your-music-service.com/playlist/generate?type=${resultCode}`;
+    window.open(playlistUrl, '_blank');
   };
 
   const progress = (step / 4) * 100;
@@ -391,7 +396,6 @@ const handleInstagramShare = async () => {
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 font-sans text-white select-none relative">
       
-      {/* 1. 상단 버튼 (홈 버튼 삭제, 언어 설정만 남김) */}
       <div className="absolute top-4 right-4 z-50 flex gap-2">
         <button 
           onClick={() => setLang(prev => prev === 'en' ? 'ko' : 'en')}
@@ -406,11 +410,6 @@ const handleInstagramShare = async () => {
             <div className="text-3xl animate-bounce mb-2">↗</div>
             <div className="text-right space-y-2">
                 <p className="text-xl text-yellow-400">Safari 브라우저로 열어주세요!</p>
-                <p className="text-sm font-normal text-gray-300">
-                    원활한 공유를 위해<br/>
-                    우측 상단 <strong>[...]</strong> 버튼을 누르고<br/>
-                    <strong>[Safari로 열기]</strong>를 선택해주세요.
-                </p>
             </div>
         </div>
       )}
@@ -465,7 +464,6 @@ const handleInstagramShare = async () => {
         </div>
       )}
 
-      {/* 결과 화면 */}
       {step === 99 && (
         <div className="w-full max-w-sm animate-slide-up pb-10 relative z-10">
           
@@ -479,26 +477,23 @@ const handleInstagramShare = async () => {
             }}
           >
                 <div style={{ padding: '24px', paddingBottom: '0' }}>
-                    {/* Header */}
-                    <div style={{ textAlign: 'center', borderBottom: '2px dashed #d1d5db', paddingBottom: '20px', marginBottom: '20px' }}>
+                    <div style={{ textAlign: 'center', borderBottom: '2px dashed #d1d5db', paddingBottom: '20px', marginBottom: '32px' }}>
                         <h2 style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.025em', textTransform: 'uppercase', margin: 0, color: '#1f2937' }}>{t.ticketTitle}</h2>
                         <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px', margin: 0 }}>{new Date().toLocaleDateString()}</p>
                     </div>
 
-                    {/* Main Result */}
                     <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                        <div style={{ fontSize: '72px', marginBottom: '24px', lineHeight: 1 }}>{emoji}</div>
-                        <h3 style={{ fontSize: '20px', fontWeight: 900, textTransform: 'uppercase', lineHeight: 1.6, marginBottom: '5px', margin: 0, color: '#1f2937' }}>{finalResultData.name}</h3>
+                        <div style={{ fontSize: '72px', marginBottom: '16px', lineHeight: 1 }}>{emoji}</div>
+                        <h3 style={{ fontSize: '20px', fontWeight: 900, textTransform: 'uppercase', lineHeight: 1.1, marginBottom: '8px', marginTop: 0, color: '#1f2937' }}>{finalResultData.name}</h3>
                         <p style={{ fontSize: '11px', color: '#4b5563', fontFamily: 'sans-serif', lineHeight: 1.6, padding: '0 4px', margin: 0, wordBreak: 'keep-all' }}>{finalResultData.description}</p>
                     </div>
 
-                    {/* Taste Graph */}
-                    <div style={{ marginBottom: '20px' }}>
+                    <div style={{ marginBottom: '40px' }}>
                         <SectionDivider title={t.analysis} />
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                             {t.metrics.map((metric, idx) => {
                             const values = METRIC_VALUES[idx];
-                            const isLeftSelected = answers[idx] === values.leftVal;
+                            const isLeftSelected = answers[idx] === values.leftVal || (shareCode && shareCode[idx] === values.leftVal);
                             return (
                                 <div key={idx} style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '6px 0', borderBottom: '1px dotted #e5e7eb' }}>
                                     <span style={{ width: '80px', flexShrink: 0, fontWeight: 'bold', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px', textAlign: 'left' }}>{idx + 1}. {metric.label}</span>
@@ -518,8 +513,7 @@ const handleInstagramShare = async () => {
                         </div>
                     </div>
 
-                    {/* Flavor Notes */}
-                    <div style={{ marginBottom: '30px' }}>
+                    <div style={{ marginBottom: '40px' }}>
                         <SectionDivider title={t.tastingNotes} />
                         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', paddingTop: '4px' }}>
                             {finalResultData.tags.slice(0, 3).map((tag) => ( 
@@ -533,10 +527,9 @@ const handleInstagramShare = async () => {
                         </div>
                     </div>
                 
-                    {/* Similar Artists */}
                     <div style={{ marginBottom: '24px' }}>
                         <SectionDivider title={t.headChefs} />
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', paddingTop: '0px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', paddingTop: '12px' }}>
                             {chefs && chefs.map((chef, idx) => (
                             <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '72px' }}>
                                 <div style={{ position: 'relative', marginBottom: '8px' }}>
@@ -562,7 +555,6 @@ const handleInstagramShare = async () => {
                         </div>
                     </div>
                     
-                    {/* Footer Logo */}
                     <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '2px dashed #d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', paddingBottom: '32px', opacity: 0.8 }}>
                         <div style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}> 
                             <img src="/logo_symbol.png" alt="Symbol" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -573,7 +565,6 @@ const handleInstagramShare = async () => {
                     </div>
                 </div>
 
-                {/* Jagged Edge */}
                 <div style={{ 
                     position: 'absolute', bottom: '-10px', left: 0, width: '100%', height: '10px', 
                     backgroundColor: '#f8f8f4', 
@@ -581,22 +572,19 @@ const handleInstagramShare = async () => {
                 }}></div>
           </div>
 
-          {/* 하단 버튼 영역 */}
           <div className="mt-8 flex flex-col gap-3 px-1 relative z-20">
             <button 
-                onClick={() => router.push('/radio')} 
+                onClick={handlePlayList} 
                 className="w-full py-4 bg-neon-gradient text-white rounded-xl font-bold text-base shadow-lg shadow-purple-900/30 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
             >
                 <span className="text-xl">🎧</span> {t.playBtn}
             </button>
 
             <div className="flex w-full gap-3">
-                {/* 3. 공유 아이콘 변경 (🎁 -> 📤) */}
                 <button onClick={(e) => { e.stopPropagation(); setIsShareModalOpen(true); }} className="flex-[2] py-3.5 bg-white text-black rounded-xl font-bold text-sm hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-md">
                     <span className="text-xl">📤</span> {t.shareBtn}
                 </button>
                 
-                {/* 2. 다시하기 버튼 (아이콘 + 텍스트 추가) */}
                 <button onClick={handleRestart} className="flex-1 py-3.5 bg-gray-800 text-gray-300 border border-gray-700 rounded-xl font-bold text-sm hover:bg-gray-700 hover:text-white transition flex items-center justify-center gap-2 shadow-md">
                     <span className="text-xl">↻</span>
                     <span>{t.retakeBtn}</span>
@@ -606,7 +594,6 @@ const handleInstagramShare = async () => {
         </div>
       )}
 
-      {/* 공유 모달 */}
       {isShareModalOpen && (
         <div className="fixed inset-0 z-[5000] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsShareModalOpen(false)}>
           <div className="w-full max-w-sm bg-[#252525] rounded-t-2xl overflow-hidden pb-4" onClick={e => e.stopPropagation()}>
@@ -637,7 +624,6 @@ const handleInstagramShare = async () => {
         </div>
       )}
 
-      {/* 저장 모달 */}
       {savedImageUrl && (
         <div className="fixed inset-0 z-[5010] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSavedImageUrl(null)}>
           <div className="max-w-sm w-full bg-white rounded-xl p-6 flex flex-col items-center space-y-6" onClick={e => e.stopPropagation()}>
