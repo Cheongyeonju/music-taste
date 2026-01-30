@@ -14,19 +14,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const fixedDescription = "당신의 음악은 무슨 맛인가요? 지금 확인해보세요.";
 
   return {
-    title: `Music Taste | ${result.name}`, // Tasty -> Taste
+    // ★ Tasty -> Taste 수정
+    title: `Music Taste | ${result.name}`, 
     description: fixedDescription,
 
     openGraph: {
       title: `당신의 음악 취향은 '${result.name}'`,
       description: fixedDescription,
       url: `https://music-taste-unlisted.vercel.app/share/${code}`,
-      siteName: 'Music Taste', // Tasty -> Taste
+      siteName: 'Music Taste', // ★ Tasty -> Taste
       locale: 'ko_KR',
       type: 'website',
       images: [
         {
-          url: "/main-thumb.png",
+          url: "/main-thumb.png", // ★ 여기도 같은 이미지를 씁니다. 파일을 교체해주세요.
           width: 1200,
           height: 630,
           alt: "Music Taste Main Thumbnail",
