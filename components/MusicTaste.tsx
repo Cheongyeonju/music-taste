@@ -467,7 +467,7 @@ const handleInstagramShare = async () => {
           
           <div 
             id="printable-receipt-area" 
-            className="relative rounded-t-2xl font-mono"
+            className="relative rounded-t-2xl font-sans"
             style={{ 
                 backgroundColor: '#f8f8f4', 
                 color: '#1f2937', 
@@ -482,14 +482,14 @@ const handleInstagramShare = async () => {
                     </div>
 
                     {/* Main Result */}
-                    <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                    <div style={{ textAlign: 'center', marginBottom: '30px' }}>
                         <div style={{ fontSize: '72px', marginBottom: '24px', lineHeight: 1 }}>{emoji}</div>
-                        <h3 style={{ fontSize: '20px', fontWeight: 900, textTransform: 'uppercase', lineHeight: 1.1, marginBottom: '12px', margin: 0, color: '#1f2937' }}>{finalResultData.name}</h3>
+                        <h3 style={{ fontSize: '20px', fontWeight: 900, textTransform: 'uppercase', lineHeight: 1.6, marginBottom: '5px', margin: 0, color: '#1f2937' }}>{finalResultData.name}</h3>
                         <p style={{ fontSize: '11px', color: '#4b5563', fontFamily: 'sans-serif', lineHeight: 1.6, padding: '0 4px', margin: 0, wordBreak: 'keep-all' }}>{finalResultData.description}</p>
                     </div>
 
                     {/* Taste Graph */}
-                    <div style={{ marginBottom: '40px' }}>
+                    <div style={{ marginBottom: '0px' }}>
                         <SectionDivider title={t.analysis} />
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                             {t.metrics.map((metric, idx) => {
@@ -515,7 +515,7 @@ const handleInstagramShare = async () => {
                     </div>
 
                     {/* Flavor Notes */}
-                    <div style={{ marginBottom: '40px' }}>
+                    <div style={{ marginBottom: '30px' }}>
                         <SectionDivider title={t.tastingNotes} />
                         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', paddingTop: '4px' }}>
                             {finalResultData.tags.slice(0, 3).map((tag) => ( 
@@ -532,7 +532,7 @@ const handleInstagramShare = async () => {
                     {/* Similar Artists */}
                     <div style={{ marginBottom: '24px' }}>
                         <SectionDivider title={t.headChefs} />
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', paddingTop: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', paddingTop: '0px' }}>
                             {chefs && chefs.map((chef, idx) => (
                             <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '72px' }}>
                                 <div style={{ position: 'relative', marginBottom: '8px' }}>
