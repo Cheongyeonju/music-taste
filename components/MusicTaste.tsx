@@ -835,7 +835,7 @@ const MusicTaste = () => {
           <div className="max-w-sm w-full bg-white rounded-xl p-6 flex flex-col items-center space-y-6" onClick={e => e.stopPropagation()}>
             <h3 className="font-bold text-lg text-black">이미지 저장</h3>
             <p className="text-sm text-gray-500 text-center leading-relaxed">
-              아래 이미지를 <span className="font-bold text-purple-600">길게 눌러서 저장</span> 후<br/>인스타그램에 공유해주세요!
+              아래 이미지를 <span className="font-bold text-purple-600">길게 눌러 저장</span> 후<br/>인스타그램에 공유해주세요!
             </p>
             <div className="relative w-full shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
               <img src={savedImageUrl} alt="Saved Result" className="w-full h-auto object-contain" />
