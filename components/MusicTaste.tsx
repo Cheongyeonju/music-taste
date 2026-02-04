@@ -664,13 +664,13 @@ const MusicTaste = () => {
 
       {step === 0 && (
         <div className="text-center space-y-6 animate-fade-in max-w-2xl relative">
-          <button 
+          {/*<button 
             onClick={() => setStep(777)}
             className="absolute top-0 left-0 p-2 opacity-30 hover:opacity-100 text-2xl"
             title="View All Results"
           >
             🐞
-          </button>
+          </button>*/}
 
           <div className="inline-block p-4 rounded-full bg-gray-800 border border-gray-700 mb-6 shadow-xl relative overflow-visible">
              <div className="relative w-14 h-14 flex items-center justify-center filter drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
