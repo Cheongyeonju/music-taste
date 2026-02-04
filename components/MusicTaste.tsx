@@ -1,16 +1,34 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation'; 
 import Image from 'next/image';
 import { RECIPES, RECIPES_KO, DishCode, ChefInfo } from '@/constants/dishData';
 import { TAG_RECIPES } from '@/constants/playlistData';
+
+// ✅ [추가] Supabase 및 아이콘
+import { createClient } from '@supabase/supabase-js';
+import { Share2,Sparkles, Play, Pause, SkipForward, Loader2, Volume2, Music as MusicIcon } from 'lucide-react';
+
+// ✅ [추가] Supabase Client 초기화
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // [16가지 코드 전체 리스트]
 const ALL_CODES = [
   "SCOF", "SCOH", "SCPF", "SCPH", "SDOF", "SDOH", "SDPF", "SDPH",
   "BCOF", "BCOH", "BCPF", "BCPH", "BDOF", "BDOH", "BDPF", "BDPH"
 ];
+
+// 트랙 타입 정의
+interface Track {
+  id: number;
+  title: string;
+  artist_name: string;
+  audio_url: string;
+  cover_image_url: string | null;
+}
 
 interface Option {
   text: string;
@@ -122,7 +140,7 @@ const UI_TEXT = {
     analysis: "Taste Graph",
     tastingNotes: "Flavor Notes",
     headChefs: "Similar Artists",
-    playBtn: "Listen Playlist",
+    playBtn: "More songs with my taste",
     homeBtn: "Home",
     shareBtn: "Share Result",
     retakeBtn: "Retake", 
@@ -147,7 +165,7 @@ const UI_TEXT = {
     analysis: "취향 분석표",
     tastingNotes: "테이스팅 노트",
     headChefs: "추천 아티스트",
-    playBtn: "플레이리스트 바로 듣기",
+    playBtn: "내 취향 다른 노래 더 듣기",
     homeBtn: "처음으로",
     shareBtn: "결과 공유하기",
     retakeBtn: "다시하기",
@@ -179,13 +197,8 @@ const SectionDivider = ({ title }: { title: string }) => (
   </div>
 );
 
-// ★ [핵심] variantId(0, 1, 2)를 추가로 받아서 섞는 시드에 반영합니다.
-// 결과: 같은 코드라도 variantId가 다르면 다른 셰프 조합이 나옵니다.
 const getConsistentChefs = (code: string, originChefs: ChefInfo[], variantId: number) => {
-    // 시드 생성 = (코드 문자 합) + (변형 ID * 큰 숫자)
-    // variantId가 바뀌면 시드도 확 바뀌어서 전혀 다른 순서가 됨
     let seed = code.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) + (variantId * 1337);
-    
     const shuffled = [...originChefs].sort(() => {
         const x = Math.sin(seed++) * 10000;
         return (x - Math.floor(x)) - 0.5;
@@ -193,28 +206,17 @@ const getConsistentChefs = (code: string, originChefs: ChefInfo[], variantId: nu
     return shuffled.slice(0, 3);
 };
 
-// src/components/MusicTaste.tsx 내부
-
 const ReceiptView = ({ code, lang, t }: { code: string, lang: 'en' | 'ko', t: any }) => {
-  // [유지] 셰프 조합 랜덤 고정 (새로고침 전까지 유지)
   const [variantId] = useState(() => Math.floor(Math.random() * 3));
-  // [추가] 하이드레이션 에러 방지를 위해 날짜를 state로 관리
   const [today, setToday] = useState('');
 
   useEffect(() => {
-    // 컴포넌트가 마운트된 후(클라이언트) 날짜 설정
     setToday(new Date().toLocaleDateString('ko-KR'));
   }, []);
 
   const baseData = RECIPES[code] || RECIPES['default'];
-
-  const textData = lang === 'ko' 
-      ? (RECIPES_KO[code] || RECIPES_KO['default']) 
-      : baseData;
-  
+  const textData = lang === 'ko' ? (RECIPES_KO[code] || RECIPES_KO['default']) : baseData;
   const emoji = baseData.emoji;
-  
-  // [유지] 셰프 가져오기
   const chefs = getConsistentChefs(code, baseData.chefs, variantId);
   const localAnswers = code.split('') as DishCode[]; 
 
@@ -232,8 +234,6 @@ const ReceiptView = ({ code, lang, t }: { code: string, lang: 'en' | 'ko', t: an
         <div style={{ padding: '24px', paddingBottom: '0' }}>
             <div style={{ textAlign: 'center', borderBottom: '2px dashed #d1d5db', paddingBottom: '20px', marginBottom: '32px' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.025em', textTransform: 'uppercase', margin: 0, color: '#1f2937' }}>{t.ticketTitle}</h2>
-                
-                {/* ▼ [수정됨] CODE: {code} -> 오늘 날짜 표시 */}
                 <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px', margin: 0 }}>
                     {today}
                 </p>
@@ -344,18 +344,22 @@ const MusicTaste = () => {
     shareCode ? shareCode.toUpperCase() : 'default'
   );
 
-  // 이 state들은 이제 일반 진행(step < 99)에서만 쓰입니다. 
-  // 결과 화면(step 99)은 ReceiptView가 전담합니다.
-  const [chefs, setChefs] = useState<ChefInfo[]>([]);
-  const [emoji, setEmoji] = useState<string>('🍽️');
+  // 일반 진행 state
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  
+   
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [savedImageUrl, setSavedImageUrl] = useState<string | null>(null);
   const [isKakaoInApp, setIsKakaoInApp] = useState(false);
   const [isFileReady, setIsFileReady] = useState(false);
   const [resultFile, setResultFile] = useState<File | null>(null);
   const [resultBlobUrl, setResultBlobUrl] = useState<string | null>(null);
+
+  // ✅ [추가] 뮤직 플레이어 State
+  const [playlist, setPlaylist] = useState<Track[]>([]);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaylistLoading, setIsPlaylistLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const t = UI_TEXT[lang];
   const currentQuestions = lang === 'ko' ? QUESTIONS_KO : QUESTIONS_EN;
@@ -419,6 +423,72 @@ const MusicTaste = () => {
     };
   }, [step, resultCode, lang]);
 
+  // ✅ [추가] 플레이리스트 Fetch Logic (결과 화면 진입 시)
+  useEffect(() => {
+    const fetchMusic = async () => {
+      if (step === 99 && resultCode) {
+        setIsPlaylistLoading(true);
+        const code = resultCode || 'default';
+        const recipe = TAG_RECIPES[code]; 
+
+        if (recipe) {
+          try {
+            const { data, error } = await supabase.rpc('get_event_playlist', {
+              p_genre: recipe.genre,
+              p_mood: recipe.mood,
+              p_tags: recipe.tags,
+              p_limit: 10
+            });
+
+            if (error) {
+                 console.error("RPC Error:", error);
+                 throw error;
+            }
+
+            if (data && data.length > 0) {
+              setPlaylist(data);
+              setCurrentTrackIndex(0);
+              setIsPlaying(true); // 자동 재생
+            }
+          } catch (e) {
+            console.error("Failed to fetch playlist:", e);
+          }
+        }
+        setIsPlaylistLoading(false);
+      }
+    };
+    fetchMusic();
+  }, [step, resultCode]);
+
+  // ✅ [추가] 오디오 제어 Logic
+  useEffect(() => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            console.log("Autoplay blocked:", error);
+            setIsPlaying(false);
+          });
+        }
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  }, [isPlaying, currentTrackIndex]);
+
+  const togglePlay = () => setIsPlaying(!isPlaying);
+
+  const playNext = () => {
+    if (currentTrackIndex < playlist.length - 1) {
+      setCurrentTrackIndex(prev => prev + 1);
+      setIsPlaying(true);
+    } else {
+      setCurrentTrackIndex(0);
+      setIsPlaying(true);
+    }
+  };
+
   const handleSelect = (idx: number, value: DishCode) => {
     if (selectedOption !== null) return;
     setSelectedOption(idx);
@@ -451,6 +521,8 @@ const MusicTaste = () => {
     setResultBlobUrl(null);
     setIsFileReady(false);
     setSelectedOption(null);
+    setPlaylist([]); // 초기화
+    setIsPlaying(false);
     window.scrollTo(0, 0);
   };
 
@@ -522,36 +594,43 @@ const MusicTaste = () => {
   };
   
   const handlePlayList = () => {
-    // 1. 현재 결과 코드 (없으면 default)
-    const code = resultCode || 'default';
-    
-    // 2. 레시피 데이터 가져오기 (위에서 만든 데이터 사용)
-    const recipe = TAG_RECIPES[code] || TAG_RECIPES['default'];
-
     // 3. Unlisted 사이트로 보낼 URL 생성
+    const code = resultCode || 'default';
+    const recipe = TAG_RECIPES[code] || TAG_RECIPES['default'];
     const baseUrl = 'https://unlisted.music/radio';
-    
-    // URL 파라미터 조립 (여기가 핵심입니다!)
     const params = new URLSearchParams({
-      start_radio: 'true',           // ★ Unlisted 사이트가 이 값을 보고 자동 재생함
-      genre: recipe.genre,           // 메인 장르
-      mood: recipe.mood,             // 메인 무드
-      tags: recipe.tags.join(','),   // 상세 태그들 (콤마로 연결)
-      
-      // (선택 사항) 통계/추적용 파라미터
+      start_radio: 'true',           
+      genre: recipe.genre,           
+      mood: recipe.mood,             
+      tags: recipe.tags.join(','),   
       utm_source: 'music_taste_test', 
       utm_content: code              
     });
-
-    // 4. 새 탭으로 이동
     window.open(`${baseUrl}?${params.toString()}`, '_blank');
   };
 
   const progress = (step / 4) * 100;
 
+  // ----------------------------------------------------------------------
+  // RENDER
+  // ----------------------------------------------------------------------
+
+  // 플레이어에서 사용할 현재 트랙
+  const currentTrack = playlist[currentTrackIndex];
+
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 font-sans text-white select-none relative">
       
+      {/* ✅ [추가] 숨겨진 오디오 태그 */}
+      {currentTrack && (
+        <audio
+            ref={audioRef}
+            src={currentTrack.audio_url}
+            onEnded={playNext}
+            crossOrigin="anonymous"
+        />
+      )}
+
       <div className="absolute top-4 right-4 z-50 flex gap-2">
         <button 
           onClick={() => setLang(prev => prev === 'en' ? 'ko' : 'en')}
@@ -645,17 +724,71 @@ const MusicTaste = () => {
         <div className="w-full max-w-sm animate-slide-up pb-10 relative z-10">
           <ReceiptView code={resultCode} lang={lang} t={t} />
 
-          <div className="mt-8 flex flex-col gap-3 px-1 relative z-20">
+          {/* ----------------------------------------------------------- */}
+          {/* ✅ [추가됨] INLINE MUSIC PLAYER (버튼 바로 위) */}
+          {/* ----------------------------------------------------------- */}
+          <div className="px-1 mb-4">
+              <div className="relative overflow-hidden rounded-2xl bg-[#252525] border border-gray-700 p-3 shadow-xl flex items-center gap-4">
+                {/* Album Art */}
+                <div className={`w-12 h-12 rounded-full bg-black flex-shrink-0 overflow-hidden border border-white/10 shadow-lg ${isPlaying ? 'animate-[spin_4s_linear_infinite]' : ''}`}>
+                    {currentTrack?.cover_image_url ? (
+                        <img src={currentTrack.cover_image_url} alt="Cover" className="w-full h-full object-cover" />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-zinc-600"><MusicIcon size={18}/></div>
+                    )}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                    {isPlaylistLoading ? (
+                        <div className="flex items-center gap-2 text-purple-400 text-xs font-bold uppercase tracking-wide">
+                            <Loader2 className="animate-spin" size={12}/> Curating...
+                        </div>
+                    ) : playlist.length > 0 ? (
+                        <div className="flex flex-col justify-center">
+                            <span className="font-bold text-white text-sm truncate">{currentTrack?.title}</span>
+                            <span className="text-xs text-gray-400 truncate flex items-center gap-1 mt-0.5">
+                                {currentTrack?.artist_name || 'Unlisted Artist'}
+                                <Volume2 size={10} className="text-purple-400"/>
+                            </span>
+                        </div>
+                    ) : (
+                            <span className="text-xs text-gray-500">No matching tracks found.</span>
+                    )}
+                </div>
+
+                {/* Controls */}
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={togglePlay}
+                        disabled={playlist.length === 0}
+                        className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isPlaying ? <Pause fill="black" size={14} /> : <Play fill="black" size={14} className="ml-0.5"/>}
+                    </button>
+                    <button 
+                            onClick={playNext}
+                            disabled={playlist.length === 0}
+                            className="w-8 h-8 rounded-full bg-gray-700 text-gray-300 flex items-center justify-center hover:bg-gray-600 hover:text-white transition disabled:opacity-30"
+                    >
+                        <SkipForward size={14}/>
+                    </button>
+                </div>
+              </div>
+          </div>
+          {/* ----------------------------------------------------------- */}
+
+          <div className="flex flex-col gap-3 px-1 relative z-20">
             <button 
                 onClick={handlePlayList} 
                 className="w-full py-4 bg-neon-gradient text-white rounded-xl font-bold text-base shadow-lg shadow-purple-900/30 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
             >
-                <span className="text-xl">🎧</span> {t.playBtn}
+                <span className="text-xl"><Sparkles /></span> {t.playBtn}
             </button>
 
             <div className="flex w-full gap-3">
                 <button onClick={(e) => { e.stopPropagation(); setIsShareModalOpen(true); }} className="flex-[2] py-3.5 bg-white text-black rounded-xl font-bold text-sm hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-md">
-                    <span className="text-xl">📤</span> {t.shareBtn}
+                    <span className="text-xl"><Share2 /></span> {t.shareBtn}
                 </button>
                 
                 <button onClick={handleRestart} className="flex-1 py-3.5 bg-gray-800 text-gray-300 border border-gray-700 rounded-xl font-bold text-sm hover:bg-gray-700 hover:text-white transition flex items-center justify-center gap-2 shadow-md">
@@ -702,7 +835,7 @@ const MusicTaste = () => {
           <div className="max-w-sm w-full bg-white rounded-xl p-6 flex flex-col items-center space-y-6" onClick={e => e.stopPropagation()}>
             <h3 className="font-bold text-lg text-black">이미지 저장</h3>
             <p className="text-sm text-gray-500 text-center leading-relaxed">
-              아래 이미지를 <span className="font-bold text-purple-600">길게 눌러서 저장</span> 후<br/>인스타그램에 공유해주세요!
+              아래 이미지를 <span className="font-bold text-purple-600">길게 눌러 저장</span> 후<br/>인스타그램에 공유해주세요!
             </p>
             <div className="relative w-full shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
               <img src={savedImageUrl} alt="Saved Result" className="w-full h-auto object-contain" />
